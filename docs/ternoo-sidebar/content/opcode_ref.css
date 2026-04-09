@@ -1,0 +1,59 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  background: #0a0a0f; color: #e0e0e0; padding: 14px;
+  font-size: 12px;
+}
+h1 { font-size: 14px; color: #c0c0c0; text-align: center; letter-spacing: 2px; margin-bottom: 4px; }
+.subtitle { font-size: 10px; color: #555; text-align: center; margin-bottom: 14px; letter-spacing: 1px; }
+
+.section {
+  background: #12121a; border: 1px solid #2a2a3a; border-radius: 6px;
+  padding: 12px; margin-bottom: 10px;
+}
+
+.search {
+  width: 100%; padding: 8px 10px; background: #1a1a24; border: 1px solid #333;
+  border-radius: 4px; color: #fff; font-family: inherit; font-size: 12px;
+  outline: none;
+}
+.search:focus { border-color: #6366f1; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left; padding: 8px 10px; font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1px; color: #888;
+  border-bottom: 1px solid #2a2a3a;
+}
+tbody td {
+  padding: 7px 10px; border-bottom: 1px solid #1f1f2a;
+  vertical-align: middle;
+}
+tbody tr:hover { background: #181822; }
+
+.mono { font-family: inherit; }
+.mnemonic { color: #c0c0c0; font-weight: bold; }
+.aliases { color: #666; font-size: 11px; }
+.decimal { color: #a5b4fc; text-align: right; }
+.bal27 { color: #34d399; font-weight: bold; text-align: right; }
+
+.group-tag {
+  display: inline-block; padding: 2px 7px; font-size: 9px;
+  border-radius: 2px; letter-spacing: 0.5px; white-space: nowrap;
+}
+.tag-reg     { background: #6366f133; color: #a5b4fc; border: 1px solid #6366f1; }
+.tag-alu     { background: #d9770633; color: #fbbf24; border: 1px solid #d97706; }
+.tag-flow    { background: #db277733; color: #f9a8d4; border: 1px solid #db2777; }
+.tag-mem     { background: #06b6d433; color: #67e8f9; border: 1px solid #06b6d4; }
+.tag-io      { background: #05966933; color: #34d399; border: 1px solid #059669; }
+.tag-fop     { background: #84cc1633; color: #bef264; border: 1px solid #84cc16; }
+.tag-stack   { background: #7c3aed33; color: #c4b5fd; border: 1px solid #7c3aed; }
+.tag-stop    { background: #be123c33; color: #fca5a5; border: 1px solid #be123c; }
+.tag-exc     { background: #ea580c33; color: #fdba74; border: 1px solid #ea580c; }
+.tag-ternoo  { background: #fbbf2433; color: #fde047; border: 1px solid #fbbf24; }
+.tag-other   { background: #44444433; color: #aaa; border: 1px solid #444; }
+
+.footer-note {
+  font-size: 10px; color: #555; text-align: center; line-height: 1.6;
+  margin-top: 14px; padding-top: 10px; border-top: 1px solid #2a2a3a;
+}

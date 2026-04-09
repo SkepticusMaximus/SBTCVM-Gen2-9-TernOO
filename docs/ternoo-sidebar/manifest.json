@@ -1,0 +1,22 @@
+{
+  "manifest_version": 2,
+  "name": "SBTCVM Project Hub",
+  "version": "0.6.0",
+  "description": "Sidebar hub for SBTCVM Gen2-9 and the TernOO project. Bundles tutorials, design documents, tools, and links to original resources.",
+  "icons": {
+    "48": "icon.png"
+  },
+  "sidebar_action": {
+    "default_title": "SBTCVM Hub",
+    "default_panel": "sidebar.html",
+    "default_icon": "icon.png"
+  },
+  "web_accessible_resources": [
+    "content/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sbtcvm-hub@stevo.adelaide"
+    }
+  }
+}

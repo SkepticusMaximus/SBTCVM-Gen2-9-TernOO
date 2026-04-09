@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SBTCVM Project Hub</title>
+<meta name="description" content="Resources, tutorials, and tools for SBTCVM Gen2-9 balanced ternary computing and the TernOO project.">
+<link rel="stylesheet" href="hub.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>SBTCVM PROJECT HUB</h1>
+    <div class="subtitle">Gen2-9 balanced ternary computing &middot; TernOO project</div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="search-wrap">
+      <input type="text" class="search" id="search" placeholder="filter…" />
+    </div>
+    <div class="artifact-list" id="list"></div>
+  </aside>
+
+  <main class="viewer">
+    <div class="welcome" id="welcome">
+      <h2>Welcome to the SBTCVM Project Hub</h2>
+      <p>A central reference point for resources related to SBTCVM Gen2-9 (a balanced ternary virtual machine by Thomas Leathers) and the TernOO project (an experimental object-oriented extension to SBTCVM).</p>
+      <p><strong>Pick an item from the sidebar</strong> to load it here. Tutorials and design documents render in this pane. Tools (the Object Inspector and the Opcode Reference) load as interactive widgets. External links to repositories, wikis, and Discord open in a new tab.</p>
+      <p>SBTCVM is the work of Thomas Leathers. TernOO is an additive extension built collaboratively by Stevo (SkepticusMaximus) and Claude in April 2026.</p>
+      <p class="welcome-foot">Both projects are FOSS. The original SBTCVM lives at the link in the sidebar.</p>
+    </div>
+    <div class="content-view" id="contentView">
+      <div class="content-header" id="contentHeader"></div>
+      <div class="content-body" id="contentBody"></div>
+    </div>
+  </main>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <span id="count">items</span>
+    <span>SBTCVM Project Hub v0.6.1</span>
+    <span>Built with care by humans and an AI</span>
+  </div>
+</footer>
+
+<script src="hub.js"></script>
+</body>
+</html>

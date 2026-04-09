@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TernOO Hub</title>
+<link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+
+<header>
+  <h1>SBTCVM HUB</h1>
+  <div class="subtitle">Gen2-9 · TernOO Project</div>
+</header>
+
+<div class="controls">
+  <input type="text" class="search" id="search" placeholder="filter…" />
+  <button class="back-btn" id="backBtn">← back to menu</button>
+</div>
+
+<div class="viewer">
+  <div class="menu-view" id="menuView">
+    <div class="welcome" id="welcome">Click an item to open it. Documents and tools load here in the sidebar; external links open in a new tab.</div>
+    <div class="artifact-list" id="list"></div>
+  </div>
+
+  <div class="content-view" id="contentView">
+    <div class="content-header" id="contentHeader"></div>
+    <div class="content-body" id="contentBody"></div>
+  </div>
+</div>
+
+<footer>
+  <span id="count">items</span>
+  <span>v0.6.0</span>
+</footer>
+
+<script src="sidebar.js"></script>
+</body>
+</html>

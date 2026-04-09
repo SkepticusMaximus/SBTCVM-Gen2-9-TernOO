@@ -1,0 +1,114 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  background: #0a0a0f; color: #e0e0e0; padding: 14px;
+  min-height: 100vh; font-size: 13px;
+}
+h1 { font-size: 13px; color: #888; margin-bottom: 4px; text-align: center; letter-spacing: 2px; }
+.subtitle { font-size: 10px; color: #555; text-align: center; margin-bottom: 14px; letter-spacing: 1px; }
+
+.section {
+  background: #12121a; border: 1px solid #2a2a3a; border-radius: 6px;
+  padding: 12px; margin-bottom: 10px;
+}
+.section-hidden { display: none; }
+.section-title {
+  font-size: 10px; color: #666; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 8px;
+}
+
+label { display: block; font-size: 10px; color: #888; margin-bottom: 3px; }
+input {
+  width: 100%; padding: 7px 9px; background: #1a1a24; border: 1px solid #333;
+  border-radius: 4px; color: #fff; font-family: inherit; font-size: 13px;
+  outline: none;
+}
+input:focus { border-color: #6366f1; }
+
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.base-row { display: flex; flex-direction: column; gap: 4px; }
+.base-row select {
+  width: 100%;
+  padding: 6px 8px; background: #1a1a24; border: 1px solid #333;
+  border-radius: 4px; color: #fff; font-family: inherit; font-size: 11px;
+  outline: none;
+}
+.base-row select:focus { border-color: #6366f1; }
+.base-row input { width: 100%; }
+
+.trit-row { display: flex; gap: 2px; margin: 6px 0; justify-content: center; }
+.trit {
+  width: 26px; height: 30px; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: bold; border-radius: 3px;
+}
+.trit-type {
+  width: 30px; height: 34px; font-size: 14px;
+  border: 2px solid #fbbf24;
+}
+.trit-neg { background: #be123c; color: white; }
+.trit-zero { background: #2a2a36; color: #888; }
+.trit-pos { background: #059669; color: white; }
+
+.type-banner {
+  text-align: center; padding: 10px; border-radius: 5px; margin: 8px 0;
+  font-weight: bold; font-size: 14px;
+}
+.type-exec { background: #be123c22; color: #f87171; border: 1px solid #be123c; }
+.type-data { background: #2a2a3a; color: #aaa; border: 1px solid #444; }
+.type-ref { background: #05966922; color: #34d399; border: 1px solid #059669; }
+
+.row {
+  display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px;
+}
+.label-cell { color: #666; }
+.value-cell { color: #d0d0d0; }
+
+.interpretation {
+  background: #1a1a24; border-left: 3px solid #6366f1; padding: 8px 10px;
+  font-size: 11px; color: #b0b0b0; line-height: 1.5; margin-top: 6px;
+  border-radius: 0 4px 4px 0;
+}
+
+.object-view {
+  background: #14141c; border: 1px solid #333; border-radius: 4px;
+  padding: 10px; margin-top: 8px;
+}
+.obj-row {
+  display: grid; grid-template-columns: 50px 1fr 1fr; gap: 6px;
+  font-size: 11px; padding: 4px 0; border-bottom: 1px solid #222;
+  align-items: center;
+}
+.obj-row:last-child { border-bottom: none; }
+.obj-addr { color: #555; text-align: right; font-weight: bold; }
+.obj-label { color: #888; }
+.obj-value { color: #d0d0d0; text-align: right; }
+
+.exec-warn {
+  background: #be123c22; border: 1px solid #be123c44; color: #fca5a5;
+  padding: 6px 8px; border-radius: 3px; font-size: 10px; margin-top: 6px;
+  text-align: center;
+}
+.exec-warn-hidden { display: none; }
+
+.button-row { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; align-items: center; }
+.qbtn-label { font-size: 10px; color: #555; margin-right: 4px; }
+.qbtn {
+  padding: 4px 9px; font-size: 10px; background: #1a1a24; border: 1px solid #333;
+  border-radius: 3px; color: #888; cursor: pointer; font-family: inherit;
+}
+.qbtn:hover { border-color: #6366f1; color: #d0d0d0; }
+.qbtn-exec:hover { border-color: #be123c; color: #fca5a5; }
+.qbtn-data:hover { border-color: #888; color: #fff; }
+.qbtn-ref:hover { border-color: #059669; color: #34d399; }
+
+.legend { font-size: 9px; color: #555; text-align: center; margin-top: 4px; }
+.legend span { margin: 0 6px; }
+.legend-type { color: #fbbf24; }
+.legend-pay { color: #888; }
+
+.asm-block {
+  font-size: 11px; color: #a0a0a0; line-height: 1.6;
+  background: #1a1a24; padding: 10px; border-radius: 4px; overflow-x: auto;
+  font-family: inherit; white-space: pre;
+}

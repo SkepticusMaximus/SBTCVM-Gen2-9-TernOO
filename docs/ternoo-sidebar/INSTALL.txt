@@ -1,0 +1,112 @@
+SBTCVM Project Hub - Sidebar Extension v0.4.0
+=============================================
+
+A self-contained Firefox sidebar extension providing one-click
+access to SBTCVM Gen2-9 resources, the TernOO project, and
+tools for ternary computing.
+
+
+WHAT'S INCLUDED
+---------------
+
+SBTCVM Original (links to Thomas Leathers' original work):
+  - SBTCVM Gen2-9 Repository
+  - SBTCVM Wiki
+  - SBTCVM Discord
+
+Tutorials (bundled, load in sidebar):
+  - SBTCVM Architecture Tutorial
+  - TernOO Tutorial
+
+TernOO (the object-oriented ternary extension project):
+  - TernOO Design v0.2 (current design document)
+  - TernOO Fork on GitHub
+
+Tools:
+  - TernOO Object Inspector (interactive typed-tryte decoder)
+
+
+INSTALLATION (Temporary)
+------------------------
+
+1. Extract this zip somewhere on your machine
+
+2. Open Firefox: about:debugging#/runtime/this-firefox
+
+3. Click "Load Temporary Add-on..."
+
+4. Select manifest.json from the extracted folder
+
+5. Open the sidebar via the toolbar icon, or
+   View > Sidebar > SBTCVM Hub
+
+
+USAGE
+-----
+
+- Items are grouped into categories (SBTCVM Original, Tutorials,
+  TernOO, Tools).
+- Click any item to open it.
+- Documents and tools load directly in the sidebar.
+- External links (repos, wiki, Discord) open in a new tab.
+- Use the filter box to narrow the list by name, description,
+  category, or tag.
+- Click "back to menu" to return from a loaded document to
+  the artifact list.
+
+
+PERMANENT INSTALLATION
+----------------------
+
+Temporary installation resets when Firefox closes.
+
+Option A: Firefox Developer Edition (allows unsigned extensions)
+  https://www.mozilla.org/firefox/developer/
+
+Option B: Sign through Mozilla addons.mozilla.org
+
+
+ADDING NEW CONTENT
+------------------
+
+Edit sidebar.js and add an entry to the "items" array:
+
+  Bundled document:
+    {
+      category: 'Category Name',
+      type: 'text',
+      file: 'content/yourfile.txt',
+      name: 'Display Name',
+      tag: 'doc',
+      desc: 'Short description'
+    }
+
+  Bundled HTML tool:
+    { ... type: 'iframe', file: 'content/yourfile.html', ... }
+
+  External link:
+    {
+      category: 'Category Name',
+      type: 'link',
+      url: 'https://example.com',
+      name: 'Display Name',
+      tag: 'repo',
+      desc: 'Short description'
+    }
+
+For bundled content, drop the file into the content/ folder
+before reloading the extension.
+
+
+CREDITS
+-------
+
+Hub built collaboratively by Stevo (SkepticusMaximus) and Claude
+SBTCVM Gen2-9 by Thomas Leathers
+April 2026 - Adelaide, Australia
+
+Both projects are FOSS. Original SBTCVM lives at:
+https://github.com/SBTCVM/SBTCVM-Gen2-9
+
+TernOO fork lives at:
+https://github.com/SkepticusMaximus/SBTCVM-Gen2-9-TernOO

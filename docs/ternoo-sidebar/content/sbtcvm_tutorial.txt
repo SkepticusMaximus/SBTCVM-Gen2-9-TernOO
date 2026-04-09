@@ -1,0 +1,692 @@
+﻿═══════════════════════════════════════════════════════
+  SBTCVM GEN2-9 ARCHITECTURE TUTORIAL
+  A guided introduction to balanced ternary computing
+  on the Small Balanced Ternary Computer Virtual Machine
+═══════════════════════════════════════════════════════
+
+Original SBTCVM by Thomas Leathers
+Tutorial compiled with assistance from Claude
+Part of the TernOO Project Hub
+https://github.com/SBTCVM/SBTCVM-Gen2-9
+
+
+═══════════════════════════════════════════════════════
+  ABOUT THIS TUTORIAL
+═══════════════════════════════════════════════════════
+
+This tutorial introduces the SBTCVM Gen2-9 virtual
+machine — a balanced ternary computer designed and
+built by Thomas Leathers as a serious implementation
+of an alternative computing paradigm. SBTCVM is not a
+toy: it has a working assembler, a higher-level
+language compiler (SSTNPL), graphical and curses
+frontends, sound synthesis, and a growing library
+of programs and demos.
+
+The goal here is to give you enough understanding of
+the SBTCVM architecture that you can read the source,
+write your own assembly programs, and appreciate the
+design choices Thomas made along the way.
+
+Each lesson begins with learning objectives so you
+know what you should take away from it. The tutorial
+ends with a self-test quiz so you can check your
+understanding before moving on to writing code.
+
+What you need:
+  - A clone of the SBTCVM-Gen2-9 repository
+  - Python 3 with pygame (for the graphical frontend)
+  - Patience for thinking in three states instead of two
+
+What this tutorial does NOT cover:
+  - SSTNPL (the higher-level compiler) — that is its
+    own substantial subject
+  - The graphical frontend internals
+  - The sound synthesis library
+  - Co-CPU and multi-core operation
+
+All of those deserve their own tutorials. This one
+focuses on the foundation: how SBTCVM stores, decodes,
+and executes balanced ternary instructions.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 1: BALANCED TERNARY
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Explain what a "trit" is and how it differs from
+    a binary bit
+  - Convert small numbers between decimal and balanced
+    ternary by hand
+  - Recognise the three trit values and their notations
+  - Understand why "balanced" is significant
+
+CONTENT
+-------
+
+A binary digit (bit) holds one of two values: 0 or 1.
+A balanced ternary digit (trit) holds one of THREE
+values: -1, 0, or +1. We commonly write these as:
+
+  Decimal value | Symbol | Common notation
+  --------------|--------|----------------
+         -1     |   T    | "T" or "-"
+          0     |   0    | "0"
+         +1     |   1    | "1" or "+"
+
+SBTCVM uses "+", "0", and "-" in assembly listings,
+and "T" or "-" interchangeably for the negative trit.
+
+A 9-trit number represents values from -9841 to +9841
+inclusive. That is 19,683 distinct values, which is
+exactly 3^9. Compare to a 9-bit binary number which
+only represents 2^9 = 512 values. Per digit, ternary
+carries more information than binary.
+
+CONVERSION BY HAND
+------------------
+
+To convert a decimal number to balanced ternary:
+  1. Divide by 3 and take the remainder.
+  2. If remainder is 0, write "0".
+  3. If remainder is 1, write "+".
+  4. If remainder is 2, write "-" and add 1 to the
+     quotient (because -1 + 3 = 2).
+  5. Repeat with the new quotient until quotient is 0.
+  6. Read the digits bottom-to-top.
+
+Example: convert 11 to balanced ternary
+
+  11 / 3 = 3 remainder 2 -> write "-", carry 4
+   4 / 3 = 1 remainder 1 -> write "+"
+   1 / 3 = 0 remainder 1 -> write "+"
+
+  Reading bottom-up: ++-
+
+  Verification: ++- = 1*9 + 1*3 + (-1)*1 = 9 + 3 - 1 = 11
+
+To convert balanced ternary back to decimal: each
+position is a power of 3, multiply by the trit value,
+and sum them up. From right to left the positions are
+1, 3, 9, 27, 81, 243, 729, 2187, 6561 for a 9-trit
+number.
+
+WHY "BALANCED"
+--------------
+
+"Balanced" means the values are symmetric around zero.
+Negative numbers and positive numbers are represented
+the same way; you simply flip every trit. There is no
+separate sign bit, no twos-complement gymnastics, no
+asymmetric integer range. The number -42 is just 42
+with all its trits inverted.
+
+This has practical consequences:
+  - Negation is a single trit-flip operation per trit
+  - Comparison can be three-way naturally (less, equal,
+    greater) without flag registers
+  - The midpoint of the integer range is exactly 0,
+    not arbitrarily close to it
+
+Thomas chose balanced ternary because these properties
+compose beautifully into a simple and elegant CPU.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 2: THE SHAPE OF MEMORY
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Describe the SBTCVM memory layout in your own words
+  - Explain what makes it a Harvard architecture
+  - State the address range and total memory size
+  - Read a memory layout diagram
+
+CONTENT
+-------
+
+SBTCVM is a Harvard architecture machine. In a
+Harvard architecture, instructions and data live in
+SEPARATE memory regions, each accessed independently.
+This contrasts with the more familiar Von Neumann
+architecture where instructions and data share one
+memory space.
+
+SBTCVM has an unusual twist on Harvard architecture:
+every memory address holds BOTH an instruction word
+AND a data word. Think of memory as a spreadsheet
+with two columns:
+
+  Address    | INST column   | DATA column
+  -----------|---------------|---------------
+  -9841      |  9-trit word  |  9-trit word
+  -9840      |  9-trit word  |  9-trit word
+  -9839      |  9-trit word  |  9-trit word
+     ...     |      ...      |      ...
+       0     |  9-trit word  |  9-trit word
+     ...     |      ...      |      ...
+   +9841     |  9-trit word  |  9-trit word
+
+The INST column holds opcodes (what to do).
+The DATA column holds operands (what to do it with).
+
+At every address you can store both. They are
+independent — writing to MEM[100].INST does not
+change MEM[100].DATA, and vice versa.
+
+MEMORY SIZE
+-----------
+
+  Address range:    -9841 to +9841 inclusive
+  Total addresses:  19,683 (which is 3^9)
+  Per address:      18 trits (9 INST + 9 DATA)
+  Total trits:      354,294
+  Equivalent bits:  ~561,556
+  Equivalent bytes: ~68.5 KB
+
+Not enormous by modern standards, but plenty of room
+for sophisticated programs. The address range is
+symmetric around zero, which is a balanced ternary
+feature: the lowest address is the negative of the
+highest address.
+
+THE EXEC POINT
+--------------
+
+The CPU has a special register called the execution
+pointer (execpoint), which is the program counter.
+It holds the address of the next instruction to
+execute. At boot, execpoint = -9841 (the most
+negative address). Every cycle, execpoint advances
+by one address — UNLESS an instruction explicitly
+changes it (a jump or branch).
+
+Programs walk forward through memory from negative
+addresses toward positive ones. This is why the
+assembler loads programs starting at -9841 by default.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 3: THE CPU AND ITS REGISTERS
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Name the main registers and their purposes
+  - Describe the CPU cycle in five steps
+  - Explain what instval and dataval contain at each tick
+
+CONTENT
+-------
+
+SBTCVM is deliberately simple. The CPU has very few
+moving parts:
+
+REGISTERS:
+  execpoint - the program counter (next address to
+              execute)
+  reg1      - general purpose register 1
+  reg2      - general purpose register 2
+  instval   - latched copy of the INST column at the
+              current address (set during fetch)
+  dataval   - latched copy of the DATA column at the
+              current address (set during fetch)
+
+OTHER STATE:
+  fop1, fop2, fop3   - fast output port addresses
+  mempoint1-3        - memory pointer registers
+  stack1 through 6   - six independent stacks
+  exception flags    - exception handling state
+
+Two general-purpose registers might seem few compared
+to a typical RISC machine with 16 or 32 registers,
+but SBTCVM compensates with its memory model: data
+lives in named memory locations rather than in
+registers, and the assembler provides label-based
+access that feels register-like in practice.
+
+THE CPU CYCLE
+-------------
+
+Every cycle does exactly five things:
+
+  1. CHECK
+     Is execpoint past the end of memory?
+     If yes, the CPU raises an Exec Pointer Overrun
+     exception and halts.
+
+  2. FETCH
+     Read MEM[execpoint].INST into instval
+     Read MEM[execpoint].DATA into dataval
+
+  3. DECODE
+     Match instval against the opcode list (one big
+     if/elif chain in CPU_G2x_9.py).
+
+  4. EXECUTE
+     Perform whatever the matched opcode says, using
+     dataval as the operand if relevant. Modify
+     registers, memory, IO, or execpoint as needed.
+
+  5. ADVANCE
+     execpoint += 1 — UNLESS the opcode changed it
+     during execute (a goto, branch, or call).
+
+At 6,500 cycles per second, the CPU walks through
+memory one address per cycle, reading both columns
+and acting on them.
+
+THE WALKER METAPHOR
+-------------------
+
+Think of the CPU as a walker on a number line. It
+starts at the most negative address. Every step, it
+reads the row it stands on (both columns), interprets
+the INST column as an instruction, uses the DATA
+column as the operand, and acts. Then it steps forward
+to the next row. A "goto" instruction is the walker
+choosing to teleport to a different row instead of
+taking the natural next step.
+
+This is the entire model. Everything else is built
+on this foundation.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 4: THE INSTRUCTION SET
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Recognise the major opcode groups
+  - Read an opcode table and understand each operation
+  - Find a specific opcode in the source code if needed
+
+CONTENT
+-------
+
+SBTCVM opcodes are 9-trit values, but Thomas organises
+them into groups using their decimal equivalents.
+Most opcodes live in the negative range, leaving the
+positive range largely free for future expansion.
+
+REGISTER OPERATIONS
+-------------------
+  -9841  setreg1     reg1 = dataval
+  -9840  setreg2     reg2 = dataval
+  -9839  copy2to1    reg1 = reg2
+  -9838  copy1to2    reg2 = reg1
+  -9837  regswap     reg1 <-> reg2
+  -9836  invert1     reg1 = -reg1  (trit-flip negation)
+  -9835  invert2     reg2 = -reg2
+  -9834  abs1        reg1 = |reg1|
+  -9833  abs2        reg2 = |reg2|
+  -9832  nabs1       reg1 = -|reg1|
+  -9831  nabs2       reg2 = -|reg2|
+
+ARITHMETIC
+----------
+  -9800  add         reg1 = reg1 + reg2
+  -9799  add2        reg2 = reg1 + reg2
+  -9798  adddata1    reg1 = dataval + reg1
+  -9797  adddata2    reg2 = dataval + reg2
+  -9796  sub         reg1 = reg1 - reg2
+  -9795  sub2        reg2 = reg1 - reg2
+  -9794  subdata1    reg1 = reg1 - dataval
+  -9793  subdata2    reg2 = reg2 - dataval
+  -9792  mul         reg1 = reg1 * reg2
+  -9791  mul2        reg2 = reg1 * reg2
+  -9790  muldata1    reg1 = reg1 * dataval
+  -9789  muldata2    reg2 = reg2 * dataval
+  -9788  div         reg1 = reg1 / reg2
+  -9787  div2        reg2 = reg1 / reg2
+  -9786  divdata1    reg1 = reg1 / dataval
+  -9785  divdata2    reg2 = reg2 / dataval
+  -9784  divmod      both quotient and remainder
+
+FLOW CONTROL
+------------
+  -9600  goto        unconditional jump to dataval
+  -9599  gotoif      jump if reg1 == reg2
+  -9598  gotoifless  jump if reg1 < reg2
+  -9597  gotoifmore  jump if reg1 > reg2
+  -9596  gotoreg1    jump to address held in reg1
+  -9595  gotoreg2    jump to address held in reg2
+
+Notice: three-way comparison built in. No flag
+register, no separate compare-then-branch step. The
+three conditional jumps map naturally onto the three
+possible outcomes of comparing two ternary values.
+
+MEMORY READ AND WRITE
+---------------------
+  -9500  dataread1   reg1 = MEM[dataval].DATA
+  -9499  dataread2   reg2 = MEM[dataval].DATA
+  -9498  instread1   reg1 = MEM[dataval].INST
+  -9497  instread2   reg2 = MEM[dataval].INST
+  -9496  datawrite1  MEM[dataval].DATA = reg1
+  -9495  datawrite2  MEM[dataval].DATA = reg2
+  -9494  instwrite1  MEM[dataval].INST = reg1
+  -9493  instwrite2  MEM[dataval].INST = reg2
+
+Both columns of memory are independently readable
+and writable. The instread/instwrite pair makes
+self-modifying code possible if you want it.
+
+IO OPERATIONS
+-------------
+  -9492  iowrite1    IO[dataval] = reg1
+  -9491  iowrite2    IO[dataval] = reg2
+  -9490  ioread1     reg1 = IO[dataval]
+  -9489  ioread2     reg2 = IO[dataval]
+
+FAST OUTPUT PORTS
+-----------------
+  -9460  fopwri1     IO[fop1] = dataval
+  -9459  fopset1     fop1 = dataval
+  -9458  fopwri2     IO[fop2] = dataval
+  -9457  fopset2     fop2 = dataval
+  -9456  fopwri3     IO[fop3] = dataval
+  -9455  fopset3     fop3 = dataval
+
+FOPs let you set up an IO target once, then write to
+it repeatedly without re-specifying the address. This
+is faster for tight loops writing to the same device,
+such as character output to the TTY.
+
+STACKS
+------
+  -9100 to -9105   six independent stack banks
+
+Each bank has its own push, pop, peek, and depth
+operations selected by the dataval. Six stacks lets
+a program use them for different purposes — call
+stack, data stack, save stacks — without contention.
+
+CONTROL
+-------
+       0  null/NOP   do nothing, advance
+   -9000  stop       halt the machine (soft stop)
+     100  excatch    install exception handler
+     101  expass     pass exception to caller
+     102  exreturn   return from exception
+     103  exclear    clear exception status
+     104  exceptcode reg1 = current exception code
+
+
+═══════════════════════════════════════════════════════
+  LESSON 5: WALKING THROUGH A SIMPLE PROGRAM
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Trace the execution of a simple SBTCVM program
+    cycle by cycle
+  - Predict register state after each instruction
+  - Understand how labels and the assembler work
+
+CONTENT
+-------
+
+A program that adds 3 + 5 and stops, in assembler:
+
+  head-nspin=stdnsp
+  setreg1;10x3        # reg1 = 3
+  setreg2;10x5        # reg2 = 5
+  add                 # reg1 = reg1 + reg2 = 8
+  stop                # halt
+
+When the assembler processes this, it produces a
+trom file with one line per memory address. Each
+line has the INST opcode and the DATA value:
+
+  Address | INST          | DATA  | What happens
+  --------|---------------|-------|----------------------
+  -9841   | -9841 setreg1 |   3   | reg1 = 3
+  -9840   | -9840 setreg2 |   5   | reg2 = 5
+  -9839   | -9800 add     |   0   | reg1 = reg1+reg2 = 8
+  -9838   | -9000 stop    |   0   | HALT
+
+CYCLE-BY-CYCLE TRACE
+--------------------
+
+  Tick 1: execpoint = -9841
+    FETCH:   instval=-9841, dataval=3
+    DECODE:  -9841 is setreg1
+    EXECUTE: reg1 = 3
+    STATE:   reg1=3, reg2=0
+    ADVANCE: execpoint = -9840
+
+  Tick 2: execpoint = -9840
+    FETCH:   instval=-9840, dataval=5
+    DECODE:  -9840 is setreg2
+    EXECUTE: reg2 = 5
+    STATE:   reg1=3, reg2=5
+    ADVANCE: execpoint = -9839
+
+  Tick 3: execpoint = -9839
+    FETCH:   instval=-9800, dataval=0
+    DECODE:  -9800 is add
+    EXECUTE: reg1 = reg1 + reg2 = 8
+    STATE:   reg1=8, reg2=5
+    ADVANCE: execpoint = -9838
+
+  Tick 4: execpoint = -9838
+    FETCH:   instval=-9000, dataval=0
+    DECODE:  -9000 is stop
+    EXECUTE: machine halts
+
+Four ticks. Four rows of the spreadsheet.
+Result: reg1 = 8.
+
+LABELS AND THE ASSEMBLER
+------------------------
+
+The assembler accepts labels and goto references
+using semicolon-separated syntax:
+
+  setreg1;0;loop      # label this address "loop"
+  goto;>loop          # jump back to "loop"
+
+The "name;value;label" form lets you both write a
+value at this address AND give the address a name.
+The ">name" form references that name elsewhere.
+
+Comments start with #. Numeric literals can be in
+decimal (10x42) or balanced ternary (+---0).
+Character literals use the colon syntax (:a outputs
+the letter "a", :\n is newline).
+
+Header lines like "head-nspin=stdnsp" set up the
+namespace import for symbol resolution.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 6: THE OPCODE MAP AND ROOM TO GROW
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Identify which opcode ranges are in use and which
+    are free
+  - Understand the deliberate sparseness of the ISA
+  - Find the right place to add new opcodes if you
+    are extending SBTCVM yourself
+
+CONTENT
+-------
+
+Of the 19,683 possible opcodes (one per 9-trit value),
+the existing ISA uses approximately 90. The opcode
+space is enormous and deliberately sparse, with
+groups separated by gaps:
+
+  -9841 to -9831  REGISTER OPS    (  11 used)
+  -9830 to -9801  free            (  30 slots)
+  -9800 to -9784  ARITHMETIC      (  17 used)
+  -9783 to -9601  free            ( 183 slots)
+  -9600 to -9595  GOTO            (   6 used)
+  -9594 to -9501  free            (  94 slots)
+  -9500 to -9455  MEM/IO/FOP      (  46 used)
+  -9454 to -9106  free            ( 349 slots)
+  -9105 to -9100  STACKS          (   6 used)
+  -9099 to -9001  free            (  99 slots)
+  -9000           SOFT STOP       (   1 used)
+  -8999 to     0  free            (8999 slots)
+       0         NULL/NOP        (   1 used)
+       1 to    99 free            (  99 slots)
+     100 to   104 EXCEPTION       (   5 used)
+     105 to +9841 free            (9737 slots)
+
+Used: ~90 opcodes
+Available: ~19,500 opcodes
+
+The sparseness is deliberate. Thomas left room for
+the ISA to grow without renumbering anything. The
+positive range from 105 to 9841 is almost entirely
+empty — over 9,700 slots — making it the natural
+home for any extension instruction set someone might
+want to add.
+
+ADDING OPCODES
+--------------
+
+If you want to add new opcodes to SBTCVM, two files
+need editing:
+
+  vmsystem/CPU_G2x_9.py
+    Add a new elif clause to the cycle() method,
+    matching your chosen opcode value, and implement
+    the action.
+
+  vmsystem/g2asmlib.py
+    Add an entry to self.instlist inside the mainloop
+    class, with the assembler mnemonic and the opcode
+    value, so the assembler recognises the new keyword.
+
+That is the entire process for opcode additions. Both
+files are well-organised and the patterns are easy to
+follow once you have read a few existing entries.
+
+
+═══════════════════════════════════════════════════════
+  SELF-TEST QUIZ
+═══════════════════════════════════════════════════════
+
+Answer each question. Answers and explanations are
+at the bottom of the quiz, after a spoiler gap.
+
+1. How many distinct values can a single trit hold?
+
+2. What is the decimal value of the balanced ternary
+   number "+0-"?
+
+3. What is the address range of SBTCVM Gen2-9 memory?
+
+4. What two values does the CPU read from memory on
+   every fetch cycle?
+
+5. Name the two general-purpose registers in SBTCVM.
+
+6. What is the opcode value of "setreg1"?
+
+7. SBTCVM has three conditional branch instructions
+   instead of binary's usual two. Why is this natural
+   for ternary?
+
+8. At what address does SBTCVM begin executing a
+   freshly-loaded program?
+
+9. Which file would you edit to add a new opcode to
+   the CPU itself?
+
+10. Roughly how many opcode slots are unused in the
+    SBTCVM instruction set?
+
+
+
+
+
+  - - - - - - - - - - SPOILER GAP - - - - - - - - - -
+
+
+
+
+
+ANSWERS
+-------
+
+1. Three: -1, 0, and +1 (often written T, 0, 1 or
+   -, 0, +).
+
+2. +0- = 1*9 + 0*3 + (-1)*1 = 9 + 0 - 1 = 8.
+
+3. -9841 to +9841 inclusive, which is 19,683 addresses
+   total (3^9).
+
+4. The INST column value (latched as instval) and
+   the DATA column value (latched as dataval).
+
+5. reg1 and reg2.
+
+6. -9841. (Yes, the same value as the lowest memory
+   address — coincidence of how the opcode space is
+   organised, not anything special.)
+
+7. Comparing two values can have three outcomes —
+   less, equal, or greater — and ternary naturally
+   maps each outcome to one of its three trit values.
+   No flag register or two-step compare-then-branch
+   is needed.
+
+8. -9841 (the most negative address). The execpoint
+   register is initialised to MNI(9) at boot.
+
+9. vmsystem/CPU_G2x_9.py — specifically the cycle()
+   method, where you add a new elif clause matching
+   your opcode value. You also need to add the
+   mnemonic to vmsystem/g2asmlib.py if you want the
+   assembler to recognise it.
+
+10. Approximately 19,500 of the 19,683 possible
+    opcodes are unused. The ISA uses around 90.
+
+
+═══════════════════════════════════════════════════════
+  WHERE TO GO FROM HERE
+═══════════════════════════════════════════════════════
+
+Now that you understand the SBTCVM architecture you
+can:
+
+  - Read the source code in vmsystem/CPU_G2x_9.py and
+    follow what each opcode actually does
+  - Write your own assembly programs and assemble them
+    with python3 g2asm.py path/to/file.tasm
+  - Run them on the curses, pygame, or bare frontends
+  - Explore the demos in the roms/ and demos/ folders
+  - Read the SBTCVM wiki for higher-level material
+  - Join the Discord community to ask questions
+
+For learning the SSTNPL higher-level language, refer
+to its own documentation in the SBTCVM wiki — it is
+a substantial subject in its own right.
+
+For an example of how SBTCVM can be extended with new
+hardware-native primitives, see the TernOO Tutorial
+and Design Document in this hub. TernOO adds four
+opcodes for native object-oriented dispatch using the
+balanced ternary type system.
+
+═══════════════════════════════════════
+  END OF SBTCVM ARCHITECTURE TUTORIAL
+═══════════════════════════════════════

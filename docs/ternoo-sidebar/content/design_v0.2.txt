@@ -1,0 +1,277 @@
+﻿══════════════════════════════════════════════════
+  TernOO DESIGN DOCUMENT v0.2
+  Native Object-Oriented Primitives for SBTCVM
+══════════════════════════════════════════════════
+
+Authors: Stevo (SkepticusMaximus) & Claude
+Date: April 2026
+Platform: SBTCVM Gen2-9 (fork: SBTCVM-Gen2-9-TernOO)
+
+CHANGELOG:
+  v0.2   - Opcode semantics revised based on Phase 4
+           usage testing. TYPECHK, TYPEUNPACK, and
+           TYPEDISPATCH now read from REG1 instead of
+           the dataval field. This enables operating
+           on typed trytes stored in memory (essential
+           for objects with fields). TYPEDISPATCH on
+           EXEC type now jumps to the address encoded
+           in the typed tryte payload itself.
+  v0.1.1 - TYPEPACK preserves reg1, result in reg2.
+  v0.1   - Initial design.
+
+
+1. OVERVIEW
+───────────
+
+TernOO adds hardware-native object-oriented
+primitives to SBTCVM by exploiting a property
+unique to balanced ternary: the first trit of
+a 9-trit tryte can serve as a TYPE TAG that the
+CPU reads in a single operation.
+
+The three type trit values map to three
+fundamental kinds of thing:
+
+  T (-1)  EXECUTABLE  Code. Run it.
+   0 ( 0)  DATA        Value. Use it.
+   1 (+1)  REFERENCE   Pointer. Follow it.
+
+This eliminates the need for software-level type
+tables, vtable lookups, or compiler annotations.
+The machine intrinsically knows what kind of thing
+each tryte contains.
+
+
+2. DESIGN PRINCIPLES
+────────────────────
+
+a) BACKWARD COMPATIBLE
+   All existing SBTCVM programs run unchanged.
+   TernOO adds new opcodes; modifies nothing.
+
+b) MINIMAL ADDITIONS
+   Four new opcodes. Everything else built in
+   assembly on top of these primitives.
+
+c) INSTRUCTION COLUMN UNTOUCHED
+   TernOO operates on the DATA column only.
+   The instruction column continues to hold
+   opcodes exactly as Thomas designed.
+
+d) DOCUMENTATION-FIRST
+   This design document exists before code.
+
+e) EMERGENT, NOT IMPOSED
+   Object orientation arises from the type trit
+   convention applied to the existing dual-column
+   architecture. Nothing about object structure is
+   forced; libraries layer conventions on top.
+
+
+3. THE TYPE TRIT
+────────────────
+
+A 9-trit tryte is split into:
+
+  ┌───────────┬──────────────────────────┐
+  │ Trit 9    │ Trits 8 through 1        │
+  │ (type)    │ (payload)                │
+  │ 1 trit    │ 8 trits                  │
+  └───────────┴──────────────────────────┘
+
+Type trit values:
+  T (-1): EXECUTABLE  Payload = entry point address
+   0 ( 0): DATA        Payload = literal value
+   1 (+1): REFERENCE   Payload = memory address
+
+Payload range (8 trits):
+  Min: -3280 (MNI for 8 trits)
+  Max: 3280 (MPI for 8 trits)
+  States: 6561
+
+IMPORTANT CONSEQUENCE:
+  EXEC and REF payloads can only address the range
+  -3280 to +3280, not the full -9841 to +9841.
+  This is sufficient for object methods and field
+  references within reasonable address ranges, but
+  TernOO references cannot point to addresses near
+  the extremes of memory. Programs needing to
+  reference memory beyond +/-3280 must use standard
+  SBTCVM memory operations rather than TernOO refs.
+
+
+4. NEW OPCODES (v0.2)
+─────────────────────
+
+All four opcodes live in the positive range of the
+instruction column (105-9841 was empty), far from
+any existing opcodes.
+
+
+OPCODE 200: TYPECHK
+  Read the type trit of the value in REG1.
+  Replace REG1 with the type trit only.
+
+  Before:  reg1 = any 9-trit value
+  After:   reg1 = -1 (exec), 0 (data), or 1 (ref)
+
+  Use case: Check what kind of thing a tryte is
+  before deciding what to do with it. To inspect
+  a tryte at a memory address, first do dataread1.
+
+
+OPCODE 201: TYPEDISPATCH
+  Read the type trit of REG1, three-way branch:
+
+    Type T (exec): jump to the payload of REG1
+    Type 0 (data): fall through (no jump)
+    Type 1 (ref):  jump to address in REG2
+
+  Before:  reg1 = typed tryte to dispatch on
+           reg2 = handler address for REF case
+  After:   execpoint changed (or not)
+
+  Note the elegance: an EXEC tryte is literally
+  self-describing as code, with its own jump
+  target encoded in its own payload. No external
+  table lookup needed.
+
+  Use case: Object message dispatch. The single
+  most important TernOO operation.
+
+
+OPCODE 202: TYPEPACK
+  Merge reg1 (type trit, must be -1/0/1) with
+  reg2 (8-trit payload) into a typed tryte.
+  Store the result in REG2. Reg1 is PRESERVED.
+
+  Before:  reg1 = type trit (-1, 0, or 1)
+           reg2 = payload value (-3280 to 3280)
+  After:   reg1 = unchanged (type trit preserved)
+           reg2 = packed 9-trit typed tryte
+
+  Use case: Constructing typed trytes. Building
+  object fields, method references, data values.
+
+
+OPCODE 203: TYPEUNPACK
+  Split REG1 into its type trit and payload.
+  Store type trit in reg1, payload in reg2.
+
+  Before:  reg1 = any typed tryte
+  After:   reg1 = type trit (-1, 0, or 1)
+           reg2 = payload value
+
+  Use case: Inspecting a typed tryte. To unpack
+  a tryte stored in memory, first do dataread1
+  to load it, then typeunpack.
+
+
+5. WHY REGISTER-BASED (v0.2 RATIONALE)
+───────────────────────────────────────
+
+The original v0.1 design had TYPECHK, TYPEUNPACK,
+and TYPEDISPATCH operate on the dataval field of
+the current instruction. This was simpler in
+isolation but had a fatal flaw: it could only
+process trytes that were hard-coded inline in
+the instruction stream. There was no way to
+inspect a typed tryte stored in memory.
+
+Phase 4 (object library) revealed this immediately.
+Reading an object field requires fetching a tryte
+FROM a memory location, then inspecting it. The
+v0.1 opcodes could not do this in any sensible way.
+
+v0.2 fixes this by making the opcodes read from
+reg1. The two-step pattern is:
+
+  dataread1;>some_address
+  typeunpack;0
+
+First instruction loads the tryte from memory into
+reg1. Second instruction unpacks it. Two cycles
+instead of one, but actually USABLE.
+
+This is the kind of design refinement that only
+emerges through real usage. v0.1 looked perfect
+on paper. v0.2 actually works.
+
+
+6. OBJECT MEMORY LAYOUT (planned for Phase 4)
+──────────────────────────────────────────────
+
+Object header (2 trytes per object):
+  base+0: field_count (DATA-typed)
+  base+1: method_table_ref (REF or DATA 0 if none)
+  base+2: first field
+  base+3: second field
+  ...
+
+Method table layout:
+  base+0: method_count (DATA-typed)
+  base+1: dispatch_kind (DATA, 0=index v1, 1=symbol future)
+  base+2: method 0 (typically EXEC-typed)
+  base+3: method 1
+  ...
+
+Memory regions (convention):
+  Negative addresses: code (existing SBTCVM convention)
+  Address 0:          null pointer (do not use)
+  Positive addresses: object storage (TernOO heap)
+
+Forward compatibility:
+  The dispatch_kind field allows future versions
+  to add symbolic dispatch without breaking objects
+  built with v1 index dispatch.
+
+
+7. IMPLEMENTATION PLAN
+──────────────────────
+
+Phase 1: CPU modification (Python)        [COMPLETE]
+  - Four elif clauses added to CPU_G2x_9.py
+  - Opcodes 200-203 in the positive range
+  - 12 unit tests pass for v0.2 semantics
+
+Phase 2: Assembler support                [COMPLETE]
+  - Mnemonics added to g2asmlib.py:
+    typechk, typedispatch, typepack, typeunpack
+
+Phase 3: Hello TernOO program             [COMPLETE]
+  - Assembly program exercising all four opcodes
+  - Compiles cleanly, runs at 6.5KHz
+  - Output: 7/7 tests pass with OK
+
+Phase 4: Object library                   [IN PROGRESS]
+  - Step 1: Static object reading           (next)
+  - Step 2: Object message dispatch
+  - Step 3: Reference chains between objects
+  - Step 4: Allocator (bump v1)
+  - Step 5: obj_alloc, obj_field_get,
+            obj_field_set, obj_send routines
+
+Phase 5: Documentation & proposal
+  - Architecture/usage tutorial (separate doc)
+  - Feature proposal for upstream SBTCVM
+  - Benchmarks vs binary dispatch overhead
+
+
+8. WHAT THIS DOES NOT CHANGE
+────────────────────────────
+
+  - No existing opcodes modified
+  - No existing memory layout changed
+  - No existing programs affected
+  - No changes to libbaltcalc.py
+  - No changes to any frontend
+  - No changes to SSTNPL
+  - Phase 2 ADDS to assembler, no removal
+
+TernOO is purely additive. Remove the four elif
+clauses and the machine reverts to stock SBTCVM.
+
+
+═══════════════════════════════════════
+  END OF DESIGN DOCUMENT v0.2
+═══════════════════════════════════════

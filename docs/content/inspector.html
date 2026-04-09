@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TernOO Object Inspector</title>
+<link rel="stylesheet" href="inspector.css">
+</head>
+<body>
+
+<h1>TernOO OBJECT INSPECTOR</h1>
+<div class="subtitle">Decode typed trytes and visualise object references</div>
+
+<div class="section">
+  <div class="section-title">Input — paste a typed tryte in any base</div>
+  <div class="input-row">
+    <div>
+      <label>Field A</label>
+      <div class="base-row">
+        <select id="baseA">
+          <option value="dec" selected>Decimal</option>
+          <option value="bin">Binary</option>
+          <option value="oct">Octal</option>
+          <option value="hex">Hexadecimal</option>
+          <option value="ter">Ternary (unbalanced)</option>
+          <option value="bal3">Balanced Ternary</option>
+          <option value="bal27">Septemvigesimal (Bal27)</option>
+        </select>
+        <input type="text" id="valA" value="6661">
+      </div>
+    </div>
+    <div>
+      <label>Field B</label>
+      <div class="base-row">
+        <select id="baseB">
+          <option value="dec">Decimal</option>
+          <option value="bin">Binary</option>
+          <option value="oct">Octal</option>
+          <option value="hex">Hexadecimal</option>
+          <option value="ter">Ternary (unbalanced)</option>
+          <option value="bal3" selected>Balanced Ternary</option>
+          <option value="bal27">Septemvigesimal (Bal27)</option>
+        </select>
+        <input type="text" id="valB" value="">
+      </div>
+    </div>
+  </div>
+  <div class="button-row">
+    <span class="qbtn-label">try:</span>
+    <button class="qbtn qbtn-data" data-val="42">DATA 42</button>
+    <button class="qbtn qbtn-data" data-val="-7">DATA -7</button>
+    <button class="qbtn qbtn-ref" data-val="6661">REF 100</button>
+    <button class="qbtn qbtn-ref" data-val="6361">REF -200</button>
+    <button class="qbtn qbtn-exec" data-val="-6061">EXEC 500</button>
+    <button class="qbtn qbtn-exec" data-val="-6661">EXEC -100</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Trit Layout (9 trits)</div>
+  <div class="trit-row" id="tritRow"></div>
+  <div class="legend">
+    <span class="legend-type">▣</span> type trit (1)
+    &nbsp;&nbsp;&nbsp;
+    <span class="legend-pay">▣</span> payload (8)
+  </div>
+</div>
+
+<div id="typeBanner" class="type-banner type-data">DATA</div>
+
+<div class="section">
+  <div class="section-title">Decoded</div>
+  <div class="row"><span class="label-cell">9-trit value (decimal)</span><span class="value-cell" id="dDec">42</span></div>
+  <div class="row"><span class="label-cell">Balanced ternary</span><span class="value-cell" id="dBT">+---0</span></div>
+  <div class="row"><span class="label-cell">Septemvigesimal (Bal27)</span><span class="value-cell" id="dBal27">2N</span></div>
+  <div class="row"><span class="label-cell">Type trit</span><span class="value-cell" id="dType">0 (DATA)</span></div>
+  <div class="row"><span class="label-cell">Payload (8-trit)</span><span class="value-cell" id="dPayload">42</span></div>
+  <div class="row"><span class="label-cell">Payload range</span><span class="value-cell">-3280 to +3280</span></div>
+  <div class="interpretation" id="interp"></div>
+</div>
+
+<div id="objSection" class="section section-hidden">
+  <div class="section-title">Object View — if this REF points to a TernOO object</div>
+  <div class="object-view" id="objView"></div>
+</div>
+
+<div id="execSection" class="section section-hidden">
+  <div class="section-title">Executable View</div>
+  <div class="object-view">
+    <div class="obj-row">
+      <span class="obj-addr">→</span>
+      <span class="obj-label">Entry point address</span>
+      <span class="obj-value" id="execAddr">—</span>
+    </div>
+    <div class="obj-row">
+      <span class="obj-addr">→</span>
+      <span class="obj-label">Reachable via</span>
+      <span class="obj-value">TYPEDISPATCH on this tryte</span>
+    </div>
+    <div class="obj-row">
+      <span class="obj-addr">→</span>
+      <span class="obj-label">Self-describing</span>
+      <span class="obj-value">code lives at own payload</span>
+    </div>
+  </div>
+  <div class="exec-warn exec-warn-hidden" id="execWarn"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Assembly Construction</div>
+  <pre id="asm" class="asm-block"></pre>
+</div>
+
+<script src="inspector.js"></script>
+</body>
+</html>

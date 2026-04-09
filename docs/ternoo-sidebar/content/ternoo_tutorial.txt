@@ -1,0 +1,236 @@
+﻿══════════════════════════════════════════════════
+  TernOO TUTORIAL: Architecture, Implementation,
+                  and Usage
+══════════════════════════════════════════════════
+
+A guide to native object-oriented primitives for
+SBTCVM Gen2-9 balanced ternary computing.
+
+
+═══════════════════════════════════════
+  PART ONE: WHY TernOO EXISTS
+═══════════════════════════════════════
+
+Conventional CPUs have no idea what kind of thing
+they are working with. A 32-bit value sitting in a
+register might be an integer, a memory address, an
+encoded character, a packed boolean array, or the
+first half of a function pointer. The hardware
+cannot tell the difference. The only thing that
+keeps a program from confusing one for another is
+the discipline of the compiler and the patience of
+the programmer.
+
+This is why a null pointer dereference and an
+integer-to-pointer cast and a buffer overflow can
+all crash a binary machine: the hardware has no
+mechanism to refuse the operation, because it has
+no concept of "kind".
+
+Object-oriented programming languages bolt a kind
+system on top via type tables, virtual method
+tables, runtime type information, and reflection
+metadata. All of this lives in software. The CPU
+runs through pointer chains and table lookups
+with no architectural support for any of it.
+
+Balanced ternary offers something binary cannot.
+A trit holds three states. If we use one trit of
+a 9-trit tryte as a TYPE TAG, the hardware itself
+can natively distinguish three fundamental kinds
+of thing in a single operation:
+
+  Type T (negative): EXECUTABLE  (code, run it)
+  Type 0 (zero):     DATA        (value, use it)
+  Type 1 (positive): REFERENCE   (address, follow it)
+
+That is the entire conceptual core of TernOO.
+Three states for three fundamental kinds.
+One trit is enough.
+
+
+═══════════════════════════════════════
+  PART TWO: THE TYPE TRIT IN DETAIL
+═══════════════════════════════════════
+
+A 9-trit tryte split into type and payload:
+
+  ┌───────────┬──────────────────────────┐
+  │ Trit 9    │ Trits 8 down to 1        │
+  │  TYPE     │  PAYLOAD                 │
+  │  1 trit   │  8 trits                 │
+  └───────────┴──────────────────────────┘
+
+Mathematics:
+  9-trit tryte value = type * 3^8 + payload
+                     = type * 6561 + payload
+
+Worked examples:
+
+  DATA value 42:
+    type=0, payload=42
+    tryte = 0*6561 + 42 = 42
+    BT representation: +---0
+    The leading trit is 0, the rest is 42 in BT.
+
+  REFERENCE to address 100:
+    type=1, payload=100
+    tryte = 1*6561 + 100 = 6661
+    BT representation: +000++-0+
+    The leading trit is +, marking it as REF.
+
+  EXECUTABLE entry point at -3000:
+    type=-1, payload=-3000
+    tryte = -1*6561 + -3000 = -9561
+    Wait - this exceeds the 8-trit payload range!
+
+IMPORTANT: payload range is 8 trits = -3280 to +3280.
+That is plenty for most addresses but TernOO refs
+and exec pointers cannot reach the extreme ends of
+the 9-trit memory space (-9841 to -3281, +3281 to
++9841). For those addresses, use standard SBTCVM
+memory operations rather than typed trytes.
+
+
+═══════════════════════════════════════
+  PART THREE: THE FOUR OPCODES
+═══════════════════════════════════════
+
+All four TernOO opcodes operate via REG1.
+To work with a typed tryte stored in memory,
+first load it into reg1 with dataread1.
+
+-------------------------------------------------
+TYPECHK (200) - Read type only
+-------------------------------------------------
+
+  Input:  reg1 = any 9-trit value
+  Output: reg1 = -1, 0, or 1 (the type trit)
+  Side:   reg2 unchanged
+
+  Use case: "What kind of thing is this?"
+
+  Example assembly:
+    dataread1;>some_field    # load tryte from memory
+    typechk;0                # extract type only
+    iowrite1;>io.decdump     # print -1, 0, or 1
+
+-------------------------------------------------
+TYPEUNPACK (203) - Split into type and payload
+-------------------------------------------------
+
+  Input:  reg1 = any 9-trit value
+  Output: reg1 = type trit, reg2 = payload value
+
+  Use case: "Give me both pieces of this tryte"
+
+  Example:
+    dataread1;>some_field
+    typeunpack;0
+    # reg1 now holds type, reg2 holds payload
+
+-------------------------------------------------
+TYPEPACK (202) - Combine type and payload
+-------------------------------------------------
+
+  Input:  reg1 = type trit (-1, 0, or 1)
+          reg2 = payload value
+  Output: reg1 = unchanged (preserved!)
+          reg2 = packed typed tryte
+
+  Use case: "Build a typed tryte"
+
+  Example: build a REF to address 200
+    setreg1;+              # type = REF (1)
+    setreg2;10x200         # payload = address
+    typepack;0
+    # reg2 now holds the packed REF tryte
+    datawrite2;>storage    # store it somewhere
+
+-------------------------------------------------
+TYPEDISPATCH (201) - Three-way branch
+-------------------------------------------------
+
+  Input:  reg1 = typed tryte to dispatch on
+          reg2 = address for REF case
+  Behaviour:
+    DATA: fall through to next instruction
+    REF:  jump to address in reg2
+    EXEC: jump to address encoded in reg1 payload
+
+  Use case: "Receive a message and route it"
+
+  This is the heart of object dispatch. One
+  opcode, three paths, one cycle.
+
+  Example:
+    dataread1;>method_field   # load typed tryte
+    setreg2;>ref_handler      # where to go if REF
+    typedispatch;0
+    # If DATA, execution continues here
+    # If REF, jumped to ref_handler
+    # If EXEC, jumped to address in payload
+
+
+═══════════════════════════════════════
+  PART FOUR: USAGE PATTERNS
+═══════════════════════════════════════
+
+PATTERN 1: Constructing a typed tryte
+
+  setreg1;0                  # type=DATA
+  setreg2;10x42              # payload=42
+  typepack;0                 # reg2 = packed tryte
+  datawrite2;>my_field       # store in memory
+
+PATTERN 2: Inspecting a typed tryte from memory
+
+  dataread1;>my_field        # load tryte to reg1
+  typeunpack;0               # split it
+  # reg1 = type, reg2 = payload
+
+PATTERN 3: Type-checking before acting
+
+  dataread1;>unknown_field
+  typechk;0                  # reg1 now holds type
+  setreg2;0
+  gotoifless;>handle_exec    # if reg1 < reg2 (T)
+  gotoif;>handle_data        # if reg1 == reg2 (0)
+  gotoifmore;>handle_ref     # if reg1 > reg2 (1)
+
+PATTERN 4: Object message dispatch (one cycle!)
+
+  dataread1;>method_slot     # load method field
+  setreg2;>handle_inherited  # fallback for REF
+  typedispatch;0
+  # falls through if DATA, jumps for REF or EXEC
+
+
+═══════════════════════════════════════
+  PART FIVE: WHAT MAKES THIS REVOLUTIONARY
+═══════════════════════════════════════
+
+On a binary machine, distinguishing data from
+pointers from code requires:
+  - Compiler-maintained type tables
+  - Runtime type information (RTTI)
+  - Bounds checking on every dereference
+  - Software vtables for method dispatch
+  - Multiple memory accesses per check
+
+On a TernOO-equipped ternary machine:
+  - The type IS the value (no separate metadata)
+  - Dispatch is one CPU cycle (one opcode)
+  - No vtable lookup, no pointer chasing
+  - Cannot accidentally execute data
+  - Cannot accidentally dereference an integer
+
+Entire categories of bug become structurally
+impossible at the machine level, not because
+the compiler caught them, but because the
+hardware refuses to confuse the categories.
+
+
+═══════════════════════════════════════
+  END OF TUTORIAL
+═══════════════════════════════════════

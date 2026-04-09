@@ -1,0 +1,675 @@
+﻿═══════════════════════════════════════════════════════
+  COUNTING BASES AND THE TERNARY ADVANTAGE
+  A guide for programmers thinking about ternary
+  computing in the context of TernOO and SBTCVM
+═══════════════════════════════════════════════════════
+
+Tutorial compiled with assistance from Claude
+Part of the TernOO Project Hub
+
+Companion tool: TernOO Object Inspector
+Punch the example values from this tutorial into the
+inspector to see them decoded live.
+
+
+═══════════════════════════════════════════════════════
+  ABOUT THIS TUTORIAL
+═══════════════════════════════════════════════════════
+
+Most working programmers are fluent in three counting
+bases: decimal for human arithmetic, binary for
+low-level work, and hexadecimal as a compact display
+format for binary. Ternary is the odd one out — almost
+nobody uses it in production because almost no hardware
+supports it.
+
+SBTCVM and TernOO change that locally. If you are
+writing programs for a balanced ternary machine, you
+need to think in ternary the way a binary programmer
+thinks in bits. This tutorial is your bridge.
+
+It has three parts:
+
+  Lesson 1: Counting bases side by side
+  Lesson 2: What each base is good at
+  Lesson 3: Programming in ternary, especially with TernOO
+
+Each lesson begins with learning objectives and ends
+with worked examples. The tutorial concludes with a
+self-test quiz.
+
+Use the TernOO Object Inspector alongside this
+tutorial. Many examples below are values you can punch
+into the inspector to see them decoded in trits and
+interpreted as TernOO typed trytes.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 1: THE FOUR BASES SIDE BY SIDE
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Recognise the same number written in binary,
+    decimal, hex, and balanced ternary
+  - Convert small numbers between bases
+  - Understand what each base costs and saves in
+    terms of digits per value
+
+CONTENT
+-------
+
+A counting base — also called a radix — is the number
+of distinct digit values available in your number
+system. Each digit position represents a power of the
+base. The bases relevant to computing are:
+
+  Base 2 (binary):     digits are {0, 1}
+  Base 3 (ternary):    digits are {-, 0, +}  (balanced)
+                       or {0, 1, 2}          (unbalanced)
+  Base 10 (decimal):   digits are {0..9}
+  Base 16 (hex):       digits are {0..9, A..F}
+
+Balanced ternary is the variant SBTCVM uses. Its three
+digits are -1, 0, and +1, often written as -, 0, +
+or T, 0, 1.
+
+A FIFTH BASE: SEPTEMVIGESIMAL (BALANCED BASE 27)
+-----------------------------------------------
+
+SBTCVM also has its own balanced base 27 (also called
+"sept" for short, or just "bal27"). This is to balanced
+ternary what hexadecimal is to binary: a compact display
+format where every 3 trits collapse into a single base-27
+character. A 9-trit nonet displays as exactly 3 characters,
+a 6-trit tryte displays as 2.
+
+Thomas's character set for SBTCVM bal27:
+
+  Char | Value     Char | Value     Char | Value
+  -----|------     -----|------     -----|------
+   M   | -13        0   |   0        D   | +13
+   N   | -12        1   |  +1        C   | +12
+   P   | -11        2   |  +2        B   | +11
+   Q   | -10        3   |  +3        A   | +10
+   R   |  -9        4   |  +4        9   |  +9
+   S   |  -8        5   |  +5        8   |  +8
+   T   |  -7        6   |  +6        7   |  +7
+   U   |  -6
+   V   |  -5
+   W   |  -4
+   X   |  -3
+   Y   |  -2
+   Z   |  -1
+
+Note that letters O and L are deliberately skipped
+(too easy to confuse with 0 and 1). Negatives use
+M through Z, where Z is closest to zero (-1) and M
+is the furthest negative (-13).
+
+The same example values from the table above, now in
+five bases:
+
+  Decimal | Binary    | Hex  | Bal Ternary | Bal27
+  --------|-----------|------|-------------|------
+       0  |        0  |   0  |         0   |    0
+       1  |        1  |   1  |         +   |    1
+      13  |     1101  |   D  |        ++-  |    D
+      27  |    11011  |  1B  |       +000  |   10
+      42  |   101010  |  2A  |      ++--0  |   2N
+     100  |  1100100  |  64  |     ++0+0+  |   4S
+     243  |  11110011 |  F3  |     +00000  |   90
+     6561 | 1100110100001 | 19A1 | +00000000 |  900
+     9841 | 10011001110001 | 2671 | ++++++++++ |  DDD
+
+Notice that 27 (which is 27^1) is "10" in bal27, exactly
+analogous to how 16 is "10" in hex and 10 is "10" in
+decimal. The leading position carries one full base
+unit. And 9841 — the maximum positive 9-trit value —
+is just "DDD" in bal27. Three characters cover the
+entire SBTCVM address space.
+
+The conversion mathematics:
+  1 bal27 digit  = 3 trits  = ~4.75 bits of info
+  3 bal27 digits = 9 trits  = ~14.27 bits = 1 nonet
+  2 bal27 digits = 6 trits  = ~9.51 bits  = 1 tryte
+
+You'll see bal27 used by SBTCVM tooling: the romdump
+utility's "-c" option produces a canonical hexdump-style
+view using bal27 for both columns. It's the natural
+display format for ternary memory contents.
+
+
+THE SAME NUMBER IN MULTIPLE BASES
+-----------------------------
+
+  Decimal | Binary    | Hex  | Balanced Ternary
+  --------|-----------|------|------------------
+       0  |        0  |   0  |        0
+       1  |        1  |   1  |        +
+       2  |       10  |   2  |       +-
+       3  |       11  |   3  |       +0
+       4  |      100  |   4  |       ++
+       5  |      101  |   5  |       +--
+       6  |      110  |   6  |       +-0
+       7  |      111  |   7  |       +-+
+       8  |     1000  |   8  |       +0-
+       9  |     1001  |   9  |       +00
+      10  |     1010  |   A  |       +0+
+      13  |     1101  |   D  |       ++-
+      27  |    11011  |  1B  |      +000
+      42  |   101010  |  2A  |     ++--0
+     100  |  1100100  |  64  |    ++0+0+
+     242  | 11110010  |  F2  |    +0000-
+     243  | 11110011  |  F3  |    +00000
+
+Notice that 243 (which is 3^5) has a particularly
+clean balanced ternary representation: a single +
+followed by five zeros. Powers of the base always
+have this clean form. In binary, 256 (2^8) is similarly
+clean: 100000000.
+
+DIGITS PER VALUE
+----------------
+
+To represent the same range of values, different bases
+need different numbers of digits. Information theory
+tells us the minimum number of digits needed in base B
+to represent N distinct values is log_B(N).
+
+  Range 0..255 (256 values):
+    Binary:  needs  8 digits  (2^8  = 256)
+    Hex:     needs  2 digits  (16^2 = 256)
+    Decimal: needs ~3 digits  (10^3 = 1000, overshoots)
+    Ternary: needs  6 digits  (3^6  = 729, overshoots)
+
+  Range -9841..+9841 (19,683 values, the SBTCVM range):
+    Binary:  needs 15 digits
+    Hex:     needs ~4 digits
+    Decimal: needs  5 digits
+    Ternary: needs  9 digits exactly (3^9 = 19,683)
+
+Per digit, ternary is more compact than binary but
+less compact than decimal or hex. One trit holds
+about 1.585 bits of information, since log2(3) =
+1.585. So a 9-trit number holds about 14.27 bits of
+information, which is why it fits ~19,683 values.
+
+WORKED EXAMPLE
+--------------
+
+Take the decimal number 42. Convert it to all four
+bases by hand.
+
+  Binary (divide by 2 repeatedly):
+    42 / 2 = 21 r 0
+    21 / 2 = 10 r 1
+    10 / 2 = 5  r 0
+     5 / 2 = 2  r 1
+     2 / 2 = 1  r 0
+     1 / 2 = 0  r 1
+    Reading bottom-up: 101010
+
+  Hex (divide by 16):
+    42 / 16 = 2 r 10 (= A)
+     2 / 16 = 0 r 2
+    Reading bottom-up: 2A
+
+  Balanced ternary (divide by 3, carry on remainder 2):
+    42 / 3 = 14 r 0  -> write 0
+    14 / 3 = 5  r 2  -> write -, carry +1 (so 5+1=6)
+     6 / 3 = 2  r 0  -> write 0
+     2 / 3 = 0  r 2  -> write -, carry +1 (so 0+1=1)
+     1 / 3 = 0  r 1  -> write +
+    Reading bottom-up: +-0-0
+
+  Verification: +-0-0
+    = 1*81 + (-1)*27 + 0*9 + (-1)*3 + 0*1
+    = 81 - 27 + 0 - 3 + 0
+    = 51... wait, that is wrong.
+
+  Let me redo it more carefully:
+    42 / 3 = 14 r 0
+    14 / 3 = 4  r 2  -> write -, carry +1: quot = 5
+     5 / 3 = 1  r 2  -> write -, carry +1: quot = 2
+     2 / 3 = 0  r 2  -> write -, carry +1: quot = 1
+     1 / 3 = 0  r 1  -> write +
+    Reading bottom-up: +---0
+
+  Verification: +---0
+    = 1*81 + (-1)*27 + (-1)*9 + (-1)*3 + 0*1
+    = 81 - 27 - 9 - 3 + 0
+    = 42 ✓
+
+  All four representations of 42:
+    Binary:           101010
+    Hex:              2A
+    Decimal:          42
+    Balanced ternary: +---0
+
+Punch 42 into the TernOO Object Inspector. The "Trit
+Layout" panel will show +---0 padded to 9 trits, the
+"Decoded" panel will confirm the type trit is 0 (DATA),
+and the assembly construction section will show how
+to build it in TernOO assembler.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 2: WHAT EACH BASE IS GOOD AT
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Identify which base is best suited to which task
+  - Explain why ternary maps naturally to three-state
+    distinctions
+  - Recognise that no base is universally best
+
+CONTENT
+-------
+
+Each base has things it does well and things it does
+clumsily. Knowing which is which is part of being a
+thoughtful programmer.
+
+BINARY
+------
+
+Binary is best at:
+  - Boolean logic. AND, OR, NOT, XOR have clean
+    one-bit-per-value implementations.
+  - Bitmasks and flag fields. Each bit is an
+    independent boolean.
+  - Hardware implementation. Two voltage levels are
+    easy to distinguish reliably.
+  - Powers of two. Doubling, halving, and addressing
+    aligned memory all become bit shifts.
+
+Binary is awkward at:
+  - Three-state logic. You need two bits, leaving one
+    of the four combinations as either redundant or
+    an error case.
+  - Negation. Twos-complement is clever but asymmetric:
+    the most negative value has no positive equivalent.
+  - Decimal display. Conversion is iterative and lossy
+    for fractions like 0.1.
+
+HEXADECIMAL
+-----------
+
+Hex is best at:
+  - Compact display of binary data. Four bits per hex
+    digit means a byte fits in two characters.
+  - Memory addresses. They are usually displayed in
+    hex because they line up with binary boundaries.
+  - Color codes (#RRGGBB), checksums, hashes.
+
+Hex is not really a different base for computation —
+it is a notation for binary. Internally it is still
+bits all the way down.
+
+DECIMAL
+-------
+
+Decimal is best at:
+  - Human-readable numbers. We grew up counting in it.
+  - Financial arithmetic. Currency calculations need
+    decimal-exact arithmetic to avoid rounding bugs.
+  - Anything that interfaces with humans directly.
+
+Decimal is awkward at:
+  - Binary computation. Binary-coded decimal exists
+    but is slow.
+  - Compact storage. It needs about 3.32 bits per
+    digit, which wastes space if encoded densely.
+
+BALANCED TERNARY
+----------------
+
+Balanced ternary is best at:
+
+  Symmetric integer ranges.
+    The range -N..+N is exactly representable. There
+    is no asymmetric edge case like binary twos-
+    complement, where -128 has no +128 counterpart.
+
+  Negation by trit-flip.
+    To negate a number, flip every trit: every + becomes
+    -, every - becomes +. No twos-complement, no
+    borrow propagation. This is one of the most elegant
+    properties of balanced ternary.
+
+  Three-way comparison.
+    Comparing two numbers has three possible outcomes:
+    less, equal, or greater. Ternary maps each outcome
+    to one trit value, allowing single-instruction
+    three-way branches without flag registers.
+
+  Three-state logic and tagging.
+    Yes/no/maybe. Past/present/future. Buy/hold/sell.
+    Code/data/reference. Each of these natural three-
+    state distinctions costs exactly one trit. In binary
+    they cost two bits with one combination wasted.
+
+Balanced ternary is awkward at:
+
+  Hardware implementation.
+    Three reliable voltage levels are harder than two.
+    Most physical computing systems chose binary for
+    this reason, not because binary is mathematically
+    superior.
+
+  Bitwise operations on external data.
+    When you receive bytes from a binary world, you
+    have to convert. SBTCVM works internally in trytes
+    and converts at the IO boundary.
+
+  Floating point.
+    There is no IEEE 754 equivalent for ternary. The
+    field is open for someone to standardise it.
+
+  Library and tooling ecosystem.
+    Binary has 80 years of accumulated libraries.
+    Ternary has SBTCVM, Setun, and a handful of
+    research projects. The ecosystem gap is real.
+
+THE NATURAL THREE-STATE MAPPING
+-------------------------------
+
+The single most useful thing about balanced ternary
+for programming is that natural three-state distinctions
+cost exactly one trit. Some examples:
+
+  Comparison result:    less / equal / greater
+  Logic with unknowns:  false / unknown / true
+  Type tag (TernOO):    data / reference / executable
+  Voting:               against / abstain / for
+  Sign of a number:     negative / zero / positive
+  Flow control:         skip / fall through / repeat
+
+In binary, each of these requires two bits, and you
+have one combination left over that has to be either
+redundant (wasted) or an error condition. Over
+millions of these distinctions in a real program,
+the encoding overhead and the wasted-state bookkeeping
+add up.
+
+TernOO is essentially this insight applied at the
+hardware level. The type tag is one trit because
+there are exactly three kinds of thing it needs to
+distinguish.
+
+A NOTE ON KNUTH
+---------------
+
+Donald Knuth wrote about balanced ternary in volume 2
+of The Art of Computer Programming. He called it
+"perhaps the prettiest number system of all." He
+discussed its arithmetic properties in detail and
+noted that the symmetry of the number system makes
+several algorithms more elegant than their binary
+counterparts. If you want the rigorous mathematical
+treatment, that is the place to look.
+
+
+═══════════════════════════════════════════════════════
+  LESSON 3: PROGRAMMING IN TERNARY WITH TernOO
+═══════════════════════════════════════════════════════
+
+LEARNING OBJECTIVES
+-------------------
+After this lesson you should be able to:
+  - Use the TernOO type trit appropriately for
+    three-state distinctions
+  - Recognise when ternary patterns simplify code
+    that would be awkward in binary
+  - Use the Object Inspector to design typed trytes
+
+CONTENT
+-------
+
+TernOO uses the leading trit of a 9-trit tryte as a
+type tag, leaving 8 trits for the payload. The three
+type values are EXEC, DATA, and REF. This is the
+natural three-state mapping from Lesson 2 made
+concrete in hardware.
+
+The Object Inspector tool decodes these typed trytes
+interactively. The rest of this lesson uses examples
+you can punch into the inspector to see them decoded.
+
+PATTERN 1: TAGGED VALUES
+------------------------
+
+A function returning a result that might be a value,
+a reference to another value, or an error code can
+use the type trit to distinguish all three:
+
+  type = DATA: payload is the result value
+  type = REF:  payload is the address of the result
+  type = EXEC: payload is the address of an error
+               handler to invoke
+
+In binary you would need a separate flag, a tagged
+union, or a sentinel value. In TernOO it is one tryte.
+
+Inspector example: try 42 (DATA 42), 6661 (REF to 100),
+and -6061 (EXEC at 500) to see all three patterns.
+
+PATTERN 2: THREE-WAY DISPATCH
+-----------------------------
+
+The TYPEDISPATCH opcode reads the type trit of reg1
+and branches three ways in a single cycle:
+
+  EXEC: jump to the address encoded in the trytes own
+        payload (the tryte is self-describing as code)
+  DATA: fall through to the next instruction
+  REF:  jump to the address held in reg2
+
+This is the heart of object-oriented dispatch in
+TernOO. A method lookup that would take a vtable scan
+and an indirect call in binary takes one opcode here.
+
+PATTERN 3: SYMMETRIC ARITHMETIC
+-------------------------------
+
+Ternary negation is just trit-flip. The opcode
+"invert1" replaces reg1 with -reg1 in one instruction,
+with no two-complement carry propagation. This makes
+routines like absolute value, sign extraction, and
+symmetric range checks elegant.
+
+  Sign of reg1 in one trit:
+    Compare reg1 to zero.
+    The result is -1, 0, or +1.
+    That single trit IS the sign — no extraction
+    needed.
+
+PATTERN 4: COMPARISON WITHOUT FLAGS
+-----------------------------------
+
+Binary CPUs have a flag register that holds the result
+of the most recent comparison, then conditional jumps
+test those flags. SBTCVM does it differently:
+
+  gotoifless    jump if reg1 < reg2
+  gotoif        jump if reg1 == reg2
+  gotoifmore    jump if reg1 > reg2
+
+Three jumps, three outcomes, no flag register, no
+two-step compare-then-branch. The comparison happens
+inside the jump opcode itself.
+
+PATTERN 5: STATE MACHINES
+-------------------------
+
+A state machine where each state has up to three
+possible transitions becomes very clean in TernOO.
+The current state is a tryte. Reading its type trit
+tells you which of three transition handlers to
+invoke. The TYPEDISPATCH opcode does the routing in
+one cycle.
+
+A FRACTAL ASIDE
+---------------
+
+The classic fractal program Fractint, developed by
+the Stone Soup Group in the late 1980s, used integer
+arithmetic to render the Mandelbrot set quickly on
+period hardware. Each pixel is iterated until either
+the value diverges or a maximum iteration count is
+reached. Each iteration produces one of three
+outcomes: still iterating, converged, or diverged.
+
+On a TernOO system the divergence flag fits in one
+trit. The iteration counter is a small integer that
+a 9-trit tryte holds easily. A complex number could
+be represented as a small TernOO object with real and
+imaginary parts as DATA fields and a divergence state
+as a third field. The three-way branch on divergence
+state would be a single TYPEDISPATCH opcode per pixel.
+
+SBTCVM is too slow and too memory-limited to render
+serious fractals in any reasonable time. But the
+encoding pattern is interesting because it shows how
+three-state outcomes that are awkward in binary fit
+naturally into a ternary representation. Whether or
+not anyone ports Fractint to SBTCVM, the approach is
+a useful illustration of the ternary advantage.
+
+PROGRAMMING ATTITUDE
+--------------------
+
+When you write programs for SBTCVM with TernOO, look
+for places where the three-state mapping fits the
+problem. Do not force three states where two are
+correct. Do not avoid three states where they exist
+naturally. Most ordinary computing — counting,
+arithmetic, control flow without branching — looks
+much the same in ternary as in binary, just with
+different digit symbols. The interesting moments are
+the ones where the ternary structure expresses
+something the binary structure obscures.
+
+Those moments are where TernOO earns its keep.
+
+
+═══════════════════════════════════════════════════════
+  SELF-TEST QUIZ
+═══════════════════════════════════════════════════════
+
+Answer each question. Answers are after a spoiler gap.
+
+1. How many distinct values can a single trit hold,
+   and what are they in balanced ternary notation?
+
+2. Approximately how many bits of information does
+   one trit carry?
+
+3. How many trits are needed to represent the SBTCVM
+   address range -9841..+9841?
+
+4. Convert the decimal number 13 to balanced ternary
+   by hand.
+
+5. In balanced ternary, how do you negate a number?
+
+6. Why does ternary make three-state distinctions
+   more efficient than binary?
+
+7. In TernOO, what are the three type trit values
+   and what does each one mean?
+
+8. Which TernOO opcode performs three-way branching
+   in a single cycle?
+
+9. Name three distinctions in everyday programming
+   that have exactly three states.
+
+10. Why is binary still dominant in physical computing
+    despite ternary having some mathematical advantages?
+
+
+
+
+
+  - - - - - - - - - - SPOILER GAP - - - - - - - - - -
+
+
+
+
+
+ANSWERS
+-------
+
+1. Three values: -, 0, + (or T, 0, 1, depending on
+   notation).
+
+2. About 1.585 bits, since log2(3) is approximately
+   1.585.
+
+3. Nine trits, since 3^9 is exactly 19,683.
+
+4. 13 in balanced ternary:
+     13 / 3 = 4 r 1   write +
+      4 / 3 = 1 r 1   write +
+      1 / 3 = 0 r 1   write +
+     Reading bottom-up: +++
+     Verification: 1*9 + 1*3 + 1*1 = 13 ✓
+
+5. Flip every trit: each + becomes -, each - becomes +,
+   and 0 stays 0. No twos-complement, no carry
+   propagation, no asymmetric edge case.
+
+6. A natural three-state distinction fits in one trit
+   exactly. In binary it requires two bits, leaving
+   one of the four combinations either wasted or
+   reserved for an error case.
+
+7. EXEC (-1) means executable code; DATA (0) means
+   a literal value; REF (+1) means a reference to
+   another memory location.
+
+8. TYPEDISPATCH (opcode 201) reads the type trit of
+   reg1 and branches three ways based on its value.
+
+9. Acceptable answers include: less/equal/greater,
+   yes/no/unknown, code/data/reference, negative/zero/
+   positive, past/present/future, true/false/null,
+   buy/hold/sell, against/abstain/for.
+
+10. Hardware reasons. Two reliable voltage levels are
+    easier to engineer than three. Binary won the
+    physical computing race for engineering reasons,
+    not mathematical ones. The Soviet Setun computer
+    in the late 1950s showed that ternary hardware was
+    feasible, but the binary ecosystem had already
+    achieved critical mass.
+
+
+═══════════════════════════════════════════════════════
+  WHERE TO GO FROM HERE
+═══════════════════════════════════════════════════════
+
+  - Read the TernOO Tutorial for the opcode reference
+    and TernOO-specific usage patterns
+  - Read the SBTCVM Architecture Tutorial for the
+    foundational machine architecture
+  - Use the Object Inspector to experiment with
+    typed trytes interactively
+  - Look up Donald Knuth, The Art of Computer
+    Programming Volume 2, for the mathematical
+    treatment of balanced ternary
+  - Look up the Setun computer (Moscow State
+    University, 1958) for the historical hardware
+    precedent
+  - Look up Fractint and the Stone Soup Group for
+    a fascinating chapter in collaborative open-source
+    software history that long predates GitHub
+
+═══════════════════════════════════════
+  END OF COUNTING BASES TUTORIAL
+═══════════════════════════════════════
