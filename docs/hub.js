@@ -208,29 +208,38 @@ function openItem(item, el) {
 }
 
 function showCompanion(url, label) {
-  const list = document.getElementById('list');
-  list.innerHTML = '';
+  const sidebar = document.querySelector('aside.sidebar');
+  // Save the current sidebar HTML so we can restore it
+  if (!sidebar.dataset.savedHtml) {
+    sidebar.dataset.savedHtml = sidebar.innerHTML;
+  }
+
+  sidebar.innerHTML = '';
 
   const backBtn = document.createElement('button');
   backBtn.className = 'companion-back';
   backBtn.textContent = '← back to menu';
   backBtn.addEventListener('click', () => {
+    sidebar.innerHTML = sidebar.dataset.savedHtml;
+    delete sidebar.dataset.savedHtml;
+    // Re-attach the search handler since innerHTML reset it
+    const search = document.getElementById('search');
+    if (search) {
+      search.addEventListener('input', e => renderList(e.target.value));
+    }
     renderList();
   });
-  list.appendChild(backBtn);
+  sidebar.appendChild(backBtn);
 
   const labelDiv = document.createElement('div');
   labelDiv.className = 'companion-label';
-  labelDiv.textContent = label + ' (companion)';
-  list.appendChild(labelDiv);
+  labelDiv.textContent = label;
+  sidebar.appendChild(labelDiv);
 
-  const frameWrap = document.createElement('div');
-  frameWrap.className = 'companion-frame-wrap';
   const frame = document.createElement('iframe');
   frame.src = url;
   frame.className = 'companion-frame';
-  frameWrap.appendChild(frame);
-  list.appendChild(frameWrap);
+  sidebar.appendChild(frame);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
