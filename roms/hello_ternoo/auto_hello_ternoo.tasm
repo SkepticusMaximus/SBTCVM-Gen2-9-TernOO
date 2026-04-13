@@ -1,0 +1,98 @@
+#Hello TernOO - First TernOO Assembly Program (v0.2)
+#Tests all four TernOO opcodes on SBTCVM Gen2-9
+#
+#Updated for v0.2 opcode semantics:
+#  typepack(202)     reg1=type, reg2=payload -> reg2=packed (unchanged)
+#  typeunpack(203)   reg1=tryte -> reg1=type, reg2=payload (now reads reg1)
+#  typechk(200)      reg1=tryte -> reg1=type trit (now reads reg1)
+#  typedispatch(201) reg1=tryte tested
+#                    EXEC: jumps to payload encoded IN reg1
+#                    DATA: falls through
+#                    REF:  jumps to address in reg2
+
+head-nspin=stdnsp
+
+fopset1;>io.ttywr
+
+fopwri1;:T
+fopwri1;:e
+fopwri1;:r
+fopwri1;:n
+fopwri1;:O
+fopwri1;:O
+fopwri1;:\n
+
+#TEST 1: TYPEPACK DATA(0)+42
+fopwri1;:1
+fopwri1;::
+setreg1;0
+setreg2;10x42
+typepack;0
+iowrite1;>io.decdump
+fopwri1;:\m
+iowrite2;>io.decdump
+fopwri1;:\n
+
+#TEST 2: TYPEPACK REF(1)+100
+fopwri1;:2
+fopwri1;::
+setreg1;+
+setreg2;10x100
+typepack;0
+iowrite1;>io.decdump
+fopwri1;:\m
+iowrite2;>io.decdump
+fopwri1;:\n
+
+#TEST 3: TYPEUNPACK a REF tryte (6661)
+fopwri1;:3
+fopwri1;::
+setreg1;10x6661
+typeunpack;0
+iowrite1;>io.decdump
+fopwri1;:\m
+iowrite2;>io.decdump
+fopwri1;:\n
+
+#TEST 4: TYPEUNPACK an EXEC tryte (-6061)
+fopwri1;:4
+fopwri1;::
+setreg1;-0+-0+---
+typeunpack;0
+iowrite1;>io.decdump
+fopwri1;:\m
+iowrite2;>io.decdump
+fopwri1;:\n
+
+#TEST 5: TYPECHK on DATA
+fopwri1;:5
+fopwri1;::
+setreg1;10x42
+typechk;0
+iowrite1;>io.decdump
+fopwri1;:\n
+
+#TEST 6: TYPECHK on REF
+fopwri1;:6
+fopwri1;::
+setreg1;10x6661
+typechk;0
+iowrite1;>io.decdump
+fopwri1;:\n
+
+#TEST 7: TYPEDISPATCH on DATA (should fall through)
+fopwri1;:7
+fopwri1;::
+setreg1;10x42
+typedispatch;0
+fopwri1;:D
+fopwri1;:a
+fopwri1;:t
+fopwri1;:a
+fopwri1;:\n
+
+fopwri1;:O
+fopwri1;:K
+fopwri1;:!
+fopwri1;:\n
+stop;0

@@ -1,0 +1,67 @@
+#=============================================================
+# TernOO Object Library Step 3: Reference chains (Option A)
+#=============================================================
+# Goal: prove objects can RELATE - one object holds the
+# address of another, and we can follow the chain.
+#
+# Object A contains a DATA field and a "ref slot" holding
+# B's full 9-trit address as a plain number. To dereference:
+#   1. Read the address from A's ref slot into reg2
+#   2. Write reg2 into the data column of a dataread instruction
+#   3. Execute that dataread to load B's contents into reg1
+#   4. typeunpack and use the value
+#
+# This is Option A: address handling uses standard 9-trit
+# ops; the type trit only describes what individual fields
+# CONTAIN, not how they're addressed.
+#=============================================================
+
+head-nspin=stdnsp
+
+fopset1;>io.ttywr
+
+fopwri1;:O
+fopwri1;:b
+fopwri1;:j
+fopwri1;:3
+fopwri1;:\n
+
+# Read object A's value field (a typed DATA tryte)
+fopwri1;:A
+fopwri1;::
+dataread1;>obj_a_value
+typeunpack;0
+iowrite2;>io.decdump
+fopwri1;:\n
+
+# Read object A's ref slot (holds B's address as plain number)
+fopwri1;:R
+fopwri1;:>
+dataread2;>obj_a_ref
+iowrite2;>io.decdump
+fopwri1;:\n
+
+# Dereference: write B's address into the deref slot's data
+copy2to1
+datawrite1;>deref_slot
+
+# Execute the (now-modified) deref instruction
+dataread1;0;deref_slot
+typeunpack;0
+fopwri1;:B
+fopwri1;::
+iowrite2;>io.decdump
+fopwri1;:\n
+
+fopwri1;:O
+fopwri1;:K
+fopwri1;:\n
+stop;0
+
+#--- Object data ---
+# Object A
+null;10x10;obj_a_value
+# A's reference field: store the address of B as a plain number
+null;>obj_b_value;obj_a_ref
+# Object B
+null;10x99;obj_b_value

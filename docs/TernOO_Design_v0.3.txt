@@ -1,0 +1,207 @@
+═══════════════════════════════════════════════════════
+  TernOO DESIGN DOCUMENT v0.3
+  Native Object-Oriented Primitives for SBTCVM
+═══════════════════════════════════════════════════════
+
+Authors: Stevo (SkepticusMaximus) & Claude
+Date: April 2026
+Platform: SBTCVM Gen2-9 (fork: SBTCVM-Gen2-9-TernOO)
+
+
+CHANGELOG
+---------
+  v0.3   - Phase 4 (object library) complete. Memory model
+           settled on "Option A" (instruction-column-as-data
+           per Thomas Leathers' PLRLE precedent). Unique-label
+           gotcha documented. Five working example programs.
+  v0.2   - Opcode semantics revised to read from REG1.
+  v0.1.1 - TYPEPACK reg1-preserved.
+  v0.1   - Initial design.
+
+
+1. OVERVIEW
+-----------
+
+TernOO adds hardware-native object-oriented primitives to
+SBTCVM Gen2-9 by exploiting balanced ternary's natural
+three-state mapping. The first trit of a 9-trit tryte
+serves as a TYPE TAG distinguishing three fundamental
+kinds of value:
+
+  T (-1) EXECUTABLE   code, run it
+   0     DATA         literal value
+  +1     REFERENCE    address, follow it
+
+Four CPU opcodes operate on this type system. An object
+library is layered on top in pure assembly, using the
+existing SBTCVM memory architecture without modification.
+
+
+2. THE FOUR OPCODES (UNCHANGED FROM v0.2)
+-----------------------------------------
+
+  200  TYPECHK       Read type trit of reg1 -> reg1
+  201  TYPEDISPATCH  Three-way branch on reg1's type:
+                       T: jump to reg1 payload
+                       0: fall through
+                      +1: jump to reg2
+  202  TYPEPACK      reg1=type, reg2=payload -> reg2 packed
+                     (reg1 preserved)
+  203  TYPEUNPACK    reg1=tryte -> reg1=type, reg2=payload
+
+Implementation: 29 lines of Python in CPU_G2x_9.py.
+No modifications to existing opcodes. Zero performance
+impact on programs not using TernOO.
+
+
+3. MEMORY MODEL (OPTION A)
+---------------------------
+
+After consultation with Thomas Leathers, TernOO uses the
+"instruction column as data" pattern that PLRLE and BINRLE
+already use for tritmap data. Object storage lives in
+memory addresses past the end of program code, where the
+exec pointer never reaches. Both columns of those addresses
+are available — 18 trits per slot.
+
+KEY PRINCIPLE: The type trit describes WHAT a tryte holds.
+Object base addresses are passed via standard 9-trit
+registers, NOT encoded in REF/EXEC payloads. This sidesteps
+the 8-trit payload range constraint (-3280..+3280) entirely.
+
+Object header layout:
+  base+0: field_count (DATA)
+  base+1: method_table_ref (DATA 0 if no methods)
+  base+2: field 0
+  base+3: field 1
+  ...
+
+Allocation: bump allocator. A heap_ptr cell holds the
+address of the next free slot. Allocation reads it,
+advances by (field_count + 2) header words, returns
+pre-advance address.
+
+Reference following: SBTCVM has no indirect-read opcode.
+We use self-modifying code: write the target address into
+the data column of a `dataread1;0` instruction, then
+execute it. This is the standard pattern for "do anything
+to address-held-in-register" in SBTCVM.
+
+
+4. THE UNIQUE-LABEL GOTCHA
+---------------------------
+
+CRITICAL: When using self-modifying code patterns where
+multiple call sites modify "the same" instruction slot,
+each use must have a UNIQUE label. SBTCVM's assembler
+resolves a label to a single physical address; reusing
+a label name across multiple `;label` declarations does
+NOT create independent slots, it collapses them into one.
+
+Wrong:
+  datawrite1;>set_slot   # write addr A to slot
+  setreg1;10x100
+  datawrite1;0;set_slot  # execute slot, writes 100 to A
+  ...
+  datawrite1;>set_slot   # SAME physical slot
+  setreg1;10x200
+  datawrite1;0;set_slot  # overwrites previous!
+
+Right:
+  datawrite1;>set_slot1
+  setreg1;10x100
+  datawrite1;0;set_slot1
+  ...
+  datawrite1;>set_slot2
+  setreg1;10x200
+  datawrite1;0;set_slot2
+
+Each set/get operation in a routine needs its own slot.
+For library code, this means unrolled or template-generated
+code rather than tight loops. A future SBTCVM enhancement
+could add a true indirect-read opcode to eliminate this
+constraint, but for now uniqueness discipline is required.
+
+
+5. PHASE 4 RESULTS
+-------------------
+
+Five working example programs, all running on the actual
+VM at near-target speed (6.3-6.6 KHz):
+
+  ternoo_obj1: Static object reading
+    Three labelled typed trytes (DATA, REF, EXEC).
+    Walk fields, TYPEUNPACK, print type and payload.
+    Output: 0:0,42  1:1,100  2:-1,500  OK
+    PROVES: typed trytes survive memory storage.
+
+  ternoo_obj2: Object message dispatch
+    DATA field falls through, REF field jumps to handler.
+    Output: 0:D:42  1:R:100  OK
+    PROVES: TYPEDISPATCH routes correctly on stored types.
+
+  ternoo_obj3: Reference chains
+    Object A holds B's address; we follow the chain via
+    self-modifying-code dereference.
+    Output: A:10  R>-9810  B:99  OK
+    PROVES: objects can relate via address-in-register.
+
+  ternoo_obj4: Bump allocator
+    Two objects allocated dynamically, distinct addresses,
+    independent values.
+    Output: 1:-9784  2:-9782  V1:11  V2:22  OK
+    PROVES: dynamic allocation works.
+
+  ternoo_obj5: Object API patterns
+    Inline alloc/set/get patterns. Two objects, three
+    fields total. No collisions.
+    Output: A:-9761  0:100  1:200  B:-9757  V:999  ?:100  OK
+    PROVES: full object library API on a ternary VM.
+
+
+6. PHASE STATUS SUMMARY
+------------------------
+
+  Phase 1: CPU modification           COMPLETE
+  Phase 2: Assembler support          COMPLETE
+  Phase 3: Hello TernOO program       COMPLETE
+  Phase 4: Object library             COMPLETE (this doc)
+  Phase 5: Documentation & proposal   COMPLETE (this doc)
+
+
+7. WHAT THIS DOES NOT CHANGE
+-----------------------------
+
+  - No existing opcodes modified
+  - No existing memory layout changed
+  - No existing programs affected
+  - No changes to libbaltcalc.py
+  - No changes to any frontend
+  - No changes to SSTNPL
+  - Phase 2 ADDS to assembler, no removal
+
+TernOO remains purely additive. Remove the four elif
+clauses from CPU_G2x_9.py and the four mnemonics from
+g2asmlib.py and the machine reverts to stock SBTCVM.
+
+
+8. ACKNOWLEDGEMENTS
+--------------------
+
+SBTCVM Gen2-9 is the work of Thomas Leathers. TernOO is
+an experimental extension built as a guest in his house.
+The PLRLE-style memory model that unblocked Phase 4 was
+his suggestion. His Discord guidance, performance warnings,
+and willingness to engage with a vibe-coding hobbyist made
+this project possible.
+
+The TernOO fork is maintained at:
+  https://github.com/SkepticusMaximus/SBTCVM-Gen2-9-TernOO
+
+Thomas's original SBTCVM lives at:
+  https://github.com/SBTCVM/SBTCVM-Gen2-9
+
+
+═══════════════════════════════════════
+  END OF DESIGN DOCUMENT v0.3
+═══════════════════════════════════════

@@ -1,0 +1,91 @@
+#=============================================================
+# TernOO Object Library Step 2: Object dispatch (DATA + REF)
+#=============================================================
+# Goal: prove that TYPEDISPATCH correctly routes execution
+# based on the type of each field.
+#
+# This step covers DATA and REF only. EXEC dispatch is
+# deferred because EXEC tryte payloads can only address
+# -3280 to +3280, while typical SBTCVM programs load near
+# -9841. Resolving this is a Phase 4 design issue (see
+# the design doc for "method block region" discussion).
+#
+# Test scheme:
+#   field_0 = DATA(42)  -> dispatch falls through, prints D:42
+#   field_1 = REF(addr) -> dispatch jumps to handler, prints R:N
+#
+# Each field's handler ends with a goto back to the next
+# field's processing, which is the simplest possible return
+# scheme until we have a proper call stack convention.
+#=============================================================
+
+head-nspin=stdnsp
+
+fopset1;>io.ttywr
+
+fopwri1;:O
+fopwri1;:b
+fopwri1;:j
+fopwri1;:2
+fopwri1;:\n
+
+#=== Process field_0 (DATA) ===
+fopwri1;:0
+fopwri1;::
+
+dataread1;>field_0
+setreg2;>handle_ref_f0
+typedispatch;0
+
+# DATA case (fell through):
+fopwri1;:D
+fopwri1;::
+# To get the payload, unpack again
+dataread1;>field_0
+typeunpack;0
+iowrite2;>io.decdump
+fopwri1;:\n
+goto;>do_field_1
+
+# REF handler for field_0
+null;0;handle_ref_f0
+fopwri1;:R
+fopwri1;:?
+fopwri1;:\n
+goto;>do_field_1
+
+#=== Process field_1 (REF) ===
+null;0;do_field_1
+fopwri1;:1
+fopwri1;::
+
+dataread1;>field_1
+setreg2;>handle_ref_f1
+typedispatch;0
+
+# DATA fall-through (shouldn't happen for field_1)
+fopwri1;:?
+fopwri1;:\n
+goto;>done
+
+# REF handler for field_1
+null;0;handle_ref_f1
+fopwri1;:R
+fopwri1;::
+# Get the payload (the address it refers to)
+dataread1;>field_1
+typeunpack;0
+iowrite2;>io.decdump
+fopwri1;:\n
+goto;>done
+
+#=== Done ===
+null;0;done
+fopwri1;:O
+fopwri1;:K
+fopwri1;:\n
+stop;0
+
+#--- Object data ---
+null;10x42;field_0
+null;10x6661;field_1

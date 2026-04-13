@@ -1,0 +1,126 @@
+#=============================================================
+# TernOO Object Library Step 5: Object API patterns (inline)
+#=============================================================
+# Demonstrates the three core object operations as inline
+# code patterns: alloc, field_set, field_get. Two distinct
+# objects to prove independence.
+#=============================================================
+
+head-nspin=stdnsp
+
+fopset1;>io.ttywr
+
+fopwri1;:O
+fopwri1;:b
+fopwri1;:j
+fopwri1;:5
+fopwri1;:\n
+
+# Init heap_ptr
+setreg1;>heap_base
+datawrite1;>heap_ptr
+
+# ALLOC obj A (4 words: 2 header + 2 fields)
+dataread1;>heap_ptr
+datawrite1;>obj_a_base
+adddata1;10x4
+datawrite1;>heap_ptr
+fopwri1;:A
+fopwri1;::
+dataread1;>obj_a_base
+iowrite1;>io.decdump
+fopwri1;:\n
+
+# Set A.field[0] = 100
+dataread1;>obj_a_base
+adddata1;10x2
+datawrite1;>set_slot1
+setreg1;10x100
+datawrite1;0;set_slot1
+
+# Set A.field[1] = 200
+dataread1;>obj_a_base
+adddata1;10x3
+datawrite1;>set_slot2
+setreg1;10x200
+datawrite1;0;set_slot2
+
+# Get A.field[0]
+dataread1;>obj_a_base
+adddata1;10x2
+datawrite1;>get_slot1
+dataread1;0;get_slot1
+fopwri1;:0
+fopwri1;::
+iowrite1;>io.decdump
+fopwri1;:\n
+
+# Get A.field[1]
+dataread1;>obj_a_base
+adddata1;10x3
+datawrite1;>get_slot2
+dataread1;0;get_slot2
+fopwri1;:1
+fopwri1;::
+iowrite1;>io.decdump
+fopwri1;:\n
+
+# ALLOC obj B (3 words: 2 header + 1 field)
+dataread1;>heap_ptr
+datawrite1;>obj_b_base
+adddata1;10x3
+datawrite1;>heap_ptr
+fopwri1;:B
+fopwri1;::
+dataread1;>obj_b_base
+iowrite1;>io.decdump
+fopwri1;:\n
+
+# Set B.field[0] = 999
+dataread1;>obj_b_base
+adddata1;10x2
+datawrite1;>set_slot3
+setreg1;10x999
+datawrite1;0;set_slot3
+
+# Get B.field[0]
+dataread1;>obj_b_base
+adddata1;10x2
+datawrite1;>get_slot3
+dataread1;0;get_slot3
+fopwri1;:V
+fopwri1;::
+iowrite1;>io.decdump
+fopwri1;:\n
+
+# Re-check A.field[0] to prove no collision
+dataread1;>obj_a_base
+adddata1;10x2
+datawrite1;>get_slot4
+dataread1;0;get_slot4
+fopwri1;:?
+fopwri1;::
+iowrite1;>io.decdump
+fopwri1;:\n
+
+fopwri1;:O
+fopwri1;:K
+fopwri1;:\n
+stop;0
+
+null;0;heap_ptr
+null;0;obj_a_base
+null;0;obj_b_base
+
+null;0;heap_base
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0

@@ -1,0 +1,72 @@
+#=============================================================
+# TernOO Object Library Step 1: Static object reading
+#=============================================================
+# Goal: prove that TernOO opcodes can decode typed trytes
+# stored at memory addresses (i.e., object fields).
+#
+# Object layout (a "Test Object" with three fields):
+#   field_0 = DATA(42)        - a literal value
+#   field_1 = REF(100)        - a reference to address 100
+#   field_2 = EXEC(500)       - an executable entry point
+#
+# Pattern: dataread1;>label  loads tryte into reg1
+#          typeunpack;0      splits it into reg1=type, reg2=payload
+#
+# Output: prints type and payload of each field, verifying that
+# typed trytes survive a memory round-trip and decode correctly.
+#=============================================================
+
+head-nspin=stdnsp
+
+fopset1;>io.ttywr
+
+# Header
+fopwri1;:O
+fopwri1;:b
+fopwri1;:j
+fopwri1;:1
+fopwri1;:\n
+
+#--- field_0: DATA tryte ---
+fopwri1;:0
+fopwri1;::
+dataread1;>field_0
+typeunpack;0
+iowrite1;>io.decdump
+fopwri1;:\m
+iowrite2;>io.decdump
+fopwri1;:\n
+
+#--- field_1: REF tryte ---
+fopwri1;:1
+fopwri1;::
+dataread1;>field_1
+typeunpack;0
+iowrite1;>io.decdump
+fopwri1;:\m
+iowrite2;>io.decdump
+fopwri1;:\n
+
+#--- field_2: EXEC tryte ---
+fopwri1;:2
+fopwri1;::
+dataread1;>field_2
+typeunpack;0
+iowrite1;>io.decdump
+fopwri1;:\m
+iowrite2;>io.decdump
+fopwri1;:\n
+
+fopwri1;:O
+fopwri1;:K
+fopwri1;:\n
+stop;0
+
+#--- Object data: three typed trytes stored as labelled memory cells ---
+# DATA(42)         = 0 * 6561 + 42 = 42
+# REF(100)         = 1 * 6561 + 100 = 6661
+# EXEC(500)        = -1 * 6561 + 500 = -6061
+
+null;10x42;field_0
+null;10x6661;field_1
+null;10x-6061;field_2

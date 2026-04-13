@@ -1,0 +1,114 @@
+#=============================================================
+# TernOO Object Library Step 4: Bump allocator
+#=============================================================
+# Goal: prove dynamic object allocation works.
+#
+# A "bump allocator" is the simplest possible heap manager:
+# one variable (heap_ptr) holds the address of the next free
+# slot. To allocate N words:
+#   1. Read heap_ptr -> base address (returned to caller)
+#   2. Add N to heap_ptr -> next free slot
+#   3. Write back heap_ptr
+#
+# Test: allocate two 2-word objects, write a value into each,
+# read both back to prove they don't collide.
+#
+# Heap region: starts at heap_base (a labelled cell past code)
+# and grows upward through free space.
+#=============================================================
+
+head-nspin=stdnsp
+
+fopset1;>io.ttywr
+
+fopwri1;:O
+fopwri1;:b
+fopwri1;:j
+fopwri1;:4
+fopwri1;:\n
+
+#=== Initialise heap_ptr to heap_base ===
+setreg1;>heap_base
+datawrite1;>heap_ptr
+
+#=== Allocate first object (2 words) ===
+# Read current heap_ptr
+dataread1;>heap_ptr
+# Save it as obj1's base address
+datawrite1;>obj1_base
+# Advance heap_ptr by 2
+adddata1;10x2
+datawrite1;>heap_ptr
+
+# Print obj1's base
+fopwri1;:1
+fopwri1;::
+dataread1;>obj1_base
+iowrite1;>io.decdump
+fopwri1;:\n
+
+#=== Allocate second object (2 words) ===
+dataread1;>heap_ptr
+datawrite1;>obj2_base
+adddata1;10x2
+datawrite1;>heap_ptr
+
+fopwri1;:2
+fopwri1;::
+dataread1;>obj2_base
+iowrite1;>io.decdump
+fopwri1;:\n
+
+#=== Write value 11 into obj1's first slot ===
+# We need to write to the address held in obj1_base.
+# Self-modifying code: poke obj1_base into a datawrite slot.
+dataread1;>obj1_base
+datawrite1;>w1_slot
+setreg1;10x11
+datawrite1;0;w1_slot
+
+#=== Write value 22 into obj2's first slot ===
+dataread1;>obj2_base
+datawrite1;>w2_slot
+setreg1;10x22
+datawrite1;0;w2_slot
+
+#=== Read obj1's value back ===
+dataread1;>obj1_base
+datawrite1;>r1_slot
+dataread1;0;r1_slot
+fopwri1;:V
+fopwri1;:1
+fopwri1;::
+iowrite1;>io.decdump
+fopwri1;:\n
+
+#=== Read obj2's value back ===
+dataread1;>obj2_base
+datawrite1;>r2_slot
+dataread1;0;r2_slot
+fopwri1;:V
+fopwri1;:2
+fopwri1;::
+iowrite1;>io.decdump
+fopwri1;:\n
+
+fopwri1;:O
+fopwri1;:K
+fopwri1;:\n
+stop;0
+
+#--- Allocator state ---
+null;0;heap_ptr
+null;0;obj1_base
+null;0;obj2_base
+
+#--- Heap region (objects allocated here) ---
+null;0;heap_base
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0
+null;0

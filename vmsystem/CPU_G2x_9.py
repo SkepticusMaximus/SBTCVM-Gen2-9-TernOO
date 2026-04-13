@@ -371,6 +371,37 @@ class cpu:
 		elif self.instval.intval == -9000:
 			if self.exception("soft stop.", -1, cancatch=0):
 				return 1, -1, "soft stop."
+		
+		#--TernOO: Native Object-Oriented Primitives--
+		#typechk: read type trit of reg1 -> reg1 (replaces reg1 value)
+		elif self.instval.intval == 200:
+			parts = libbaltcalc.tritchop(self.reg1.intval, 8)
+			self.reg1.changeval(parts[1])
+		#typedispatch: three-way branch on type trit of reg1
+		#  T(-1)=jump to reg1's old payload (exec), 0=fall through (data), 1(+1)=jump to reg2 (ref)
+		#  Note: reg1 must hold the typed tryte; for EXEC dispatch, the payload IS the jump target
+		elif self.instval.intval == 201:
+			parts = libbaltcalc.tritchop(self.reg1.intval, 8)
+			type_trit = parts[1]
+			payload = parts[0]
+			if type_trit == -1:
+				self.goto(payload)
+				return None
+			elif type_trit == 1:
+				self.goto(self.reg2.intval)
+				return None
+		#typepack: merge reg1 (type trit) + reg2 (payload) -> reg2
+		elif self.instval.intval == 202:
+			type_t = self.reg1.intval
+			if type_t in (-1, 0, 1):
+				packed = libbaltcalc.tritmerge(type_t, self.reg2.intval, 8)
+				self.reg2.changeval(packed)
+		#typeunpack: split reg1 -> type trit in reg1, payload in reg2
+		elif self.instval.intval == 203:
+			parts = libbaltcalc.tritchop(self.reg1.intval, 8)
+			self.reg1.changeval(parts[1])
+			self.reg2.changeval(parts[0])
+		
 		self.execpoint.intval+=1
 		#exreturn
 		if self.instval.intval == 102:

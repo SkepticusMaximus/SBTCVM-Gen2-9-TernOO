@@ -609,6 +609,10 @@ class mainloop:
 		instruct(["exreturn"], 102),
 		instruct(["exclear"], 103),
 		instruct(["exceptcode"], 104),
+		instruct(["typechk"], 200),#TernOO: Native Object-Oriented Primitives
+		instruct(["typedispatch"], 201),
+		instruct(["typepack"], 202),
+		instruct(["typeunpack"], 203),
 		includetas0(),
 		includetas0_as(),
 		nspacevar(),
